@@ -15,6 +15,8 @@ import logging
 import os
 import shutil
 import csv
+from selenium.common.exceptions import TimeoutException
+
 
 
 class HeadlessBrowser:
@@ -69,8 +71,6 @@ class Browser:
 
 
 
-
-
 def scrape_profile(browser, profile_url):
     """Scrape the relevant parts of the LinkedIn profile using the Browser instance."""
     browser.navigate(profile_url)
@@ -78,17 +78,33 @@ def scrape_profile(browser, profile_url):
 
     profile_data = {}
     
-    # Scrape the profile name
-    profile_data['name'] = browser.get_inner_text('//h1[contains(@class, "text-heading-xlarge")]')
-    
-    # Scrape the profile headline
-    profile_data['headline'] = browser.get_inner_text('//div[contains(@class, "text-body-medium break-words")]')
-    
-    # Scrape the current company
-    profile_data['current_company'] = browser.get_inner_text('//li[contains(@class, "QFGPtOjAtpOifhDynMlyCYJuGDRoyIVoQfcaMc")]//span[contains(@class, "xPpxwuFnHVOTjkbRBnNSrqGFHgEcQKsIHrukLXWA")]')
-    
-    # Scrape the location
-    profile_data['location'] = browser.get_inner_text('//div[contains(@class, "VidZoTAElguBIpzFCpQhxQbSSzKBZuYtY mt2")]//span[contains(@class, "text-body-small inline t-black--light break-words")]')
+    try:
+        # Scrape the profile name
+        profile_data['name'] = browser.get_inner_text('//h1[contains(@class, "text-heading-xlarge")]')
+    except TimeoutException:
+        profile_data['name'] = "N/A"
+        print("Profile name not found")
+
+    try:
+        # Scrape the profile headline
+        profile_data['headline'] = browser.get_inner_text('//div[contains(@class, "text-body-medium break-words")]')
+    except TimeoutException:
+        profile_data['headline'] = "N/A"
+        print("Profile headline not found")
+
+    try:
+        # Scrape the current company
+        profile_data['current_company'] = browser.get_inner_text('//li[contains(@class, "pv-top-card--experience-list-item")]//span[contains(@class, "visually-hidden")]')
+    except TimeoutException:
+        profile_data['current_company'] = "N/A"
+        print("Current company not found")
+
+    try:
+        # Scrape the location
+        profile_data['location'] = browser.get_inner_text('//span[contains(@class, "text-body-small inline t-black--light break-words")]')
+    except TimeoutException:
+        profile_data['location'] = "N/A"
+        print("Location not found")
     
     return profile_data
 
@@ -99,16 +115,25 @@ def scrape_contact_info(browser):
 
     contact_info = {}
     
-    # Scrape the LinkedIn profile URL
-    contact_info['linkedin_url'] = browser.get_inner_text('//section[contains(@class, "pv-contact-info__contact-type")]//a[contains(@class, "BpMziKPlBXPxCpwxevWbCmxplvQlqLyZHzMs")]')
-    
-    # Scrape the websites
-    websites = browser.headless_browser.driver.find_elements(By.XPATH, '//section[contains(@class, "pv-contact-info__contact-type")]//a[contains(@class, "pv-contact-info__contact-link")]')
-    contact_info['websites'] = [website.get_attribute('href') for website in websites]
+    try:
+        # Scrape the LinkedIn profile URL
+        contact_info['linkedin_url'] = browser.get_inner_text('//section[contains(@class, "pv-contact-info__contact-type")]//a[contains(@href, "linkedin.com/in")]')
+    except TimeoutException:
+        contact_info['linkedin_url'] = "N/A"
+        print("LinkedIn URL not found")
+
+    try:
+        # Scrape the websites
+        websites = browser.headless_browser.driver.find_elements(By.XPATH, '//section[contains(@class, "pv-contact-info__contact-type")]//a[contains(@href, "http")]')
+        contact_info['websites'] = [website.get_attribute('href') for website in websites]
+    except TimeoutException:
+        contact_info['websites'] = []
+        print("Websites not found")
     
     return contact_info
-def save_to_csv(profile_data, contact_info):
-    """Save the profile and contact information to a CSV file named after the profile."""
+
+def save_to_csv(profile_data, contact_info, filename="profiles_spa.csv"):
+    """Save the profile and contact information to a CSV file, appending each profile as a new row."""
     fieldnames = ['name', 'headline', 'current_company', 'location', 'linkedin_url', 'websites']
     
     # Combine profile_data and contact_info into a single dictionary
@@ -117,24 +142,33 @@ def save_to_csv(profile_data, contact_info):
     # Convert websites list to a string
     combined_data['websites'] = ', '.join(combined_data['websites'])
     
-    # Create a filename based on the profile name
-    filename = f"{profile_data['name'].replace(' ', '_')}.csv"
+    # Check if the file exists to write the header only once
+    file_exists = os.path.isfile(filename)
     
     # Write to CSV
-    with open(filename, mode='w', newline='', encoding='utf-8') as file:
+    with open(filename, mode='a', newline='', encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         
-        # Write header
-        writer.writeheader()
+        # Write header only if the file does not exist
+        if not file_exists:
+            writer.writeheader()
         
         # Write data
         writer.writerow(combined_data)
-def main():
+def get_linkedin_profiles(file_path):
+    """Return a list of LinkedIn profile URLs from the given file, excluding web.archive links."""
+    linkedin_profiles = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            url = line.strip()
+            if "linkedin.com/in" in url and "web.archive.org" not in url:
+                linkedin_profiles.append(url)
+    return linkedin_profiles
+def scrape_linkedin_profile(profile_url):
     browser = Browser()
-    profile_url = "https://www.linkedin.com/in/meyeresqfamilyprotection/"
     
     # Load cookies
-    browser.load_cookies_from_file("linkedin_cookies.txt")
+    browser.load_cookies_from_file("cookies.txt")
     
     # Scrape profile information
     profile_data = scrape_profile(browser, profile_url)
@@ -147,5 +181,9 @@ def main():
     save_to_csv(profile_data, contact_info)
     browser.close()
 
-if __name__ == "__main__":
-    main()
+def main():
+    linkedin_profiles = get_linkedin_profiles('links2.txt')
+    for profile_url in linkedin_profiles:
+        scrape_linkedin_profile(profile_url)
+        sleep(60)
+main()
