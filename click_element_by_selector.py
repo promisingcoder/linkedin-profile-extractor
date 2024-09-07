@@ -4,7 +4,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import ElementClickInterceptedException
 
-def click_element(driver, selector):
+def click_element_by_selector(driver, selector):
     """Click an element identified by a CSS selector."""
     try:
         # Wait for the element to be present and clickable
