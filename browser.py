@@ -1,7 +1,7 @@
 import undetected_chromedriver as uc
 from time import sleep
 import chromedriver_autoinstaller
-from click_element import click_element
+from click_element_by_selector import click_element_by_selector
 from fill_input import fill_input
 from load_cookies import load_cookies
 from save_cookies import save_cookies
@@ -16,13 +16,13 @@ import os
 import shutil
 import csv
 from selenium.common.exceptions import TimeoutException
-
+from find_elements_by_xpath import find_elements_by_xpath
 
 
 class HeadlessBrowser:
     def __init__(self):
-        chromedriver_autoinstaller.install()  # Automatically installs the correct ChromeDriver
-        self.driver = uc.Chrome(options=self.get_options(), version_main=127)  # Use your current Chrome major version
+
+        self.driver = uc.Chrome(options=self.get_options())  # Use your current Chrome major version
 
     def get_options(self):
         options = uc.ChromeOptions()
@@ -36,12 +36,32 @@ class HeadlessBrowser:
 
 
 class Browser:
+    number_of_windows = 0
+    current_window = 0
     def __init__(self):
         self.headless_browser = HeadlessBrowser()
 
     def navigate(self, url):
         self.headless_browser.driver.get(url)
+    """
+    def switch_to_previous_window(self):
+        self.headless_browser.driver.switch_to.window(self.headless_browser.driver.window_handles[self.current_window-1])
+    def new_window(self):
+        self.headless_browser.driver.execute_script("window.open('google.com');") 
+        self.number_of_windows += 1
+        sleep(100)
+        self.headless_browser.driver.switch_to.window(self.headless_browser.driver.window_handles[self.number_of_windows])
+        
 
+        self.current_window = self.number_of_windows
+        print(f"number of open  windows {self.number_of_windows}")
+        return(self.number_of_windows)
+    
+    def navigate_to_window(self,window_number):
+        self.headless_browser.driver.switch_to.window(self.headless_browser.driver.window_handles[window_number])
+    """
+    def find_elements_by_xpath(self, selector):
+        return(find_elements_by_xpath(self.headless_browser.driver,selector))
     def close(self):
         self.headless_browser.quit()
 
@@ -49,9 +69,9 @@ class Browser:
         """Fill an input field identified by a CSS selector."""
         fill_input(self.headless_browser.driver, selector, value)  # Call the existing function
 
-    def click_element(self, selector):
+    def click_element_by_selector(self, selector):
         """Click an element identified by a CSS selector."""
-        click_element(self.headless_browser.driver, selector)  # Call the existing function
+        click_element_by_selector(self.headless_browser.driver, selector)  # Call the existing function
 
     def load_cookies_from_file(self, path):
         """Load cookies from a specified file into the browser."""
@@ -164,11 +184,10 @@ def get_linkedin_profiles(file_path):
             if "linkedin.com/in" in url and "web.archive.org" not in url:
                 linkedin_profiles.append(url)
     return linkedin_profiles
-def scrape_linkedin_profile(profile_url):
-    browser = Browser()
-    
+def scrape_linkedin_profile(browser,profile_url):
+
     # Load cookies
-    browser.load_cookies_from_file("cookies.txt")
+    
     
     # Scrape profile information
     profile_data = scrape_profile(browser, profile_url)
@@ -178,12 +197,92 @@ def scrape_linkedin_profile(profile_url):
     contact_info = scrape_contact_info(browser)
     print("Contact Info:", contact_info)
     # Save to CSV
-    save_to_csv(profile_data, contact_info)
-    browser.close()
+    #save_to_csv(profile_data, contact_info)
+    return((profile_data,contact_info))
+def extract_company_profile(browser,link):
+    if link:
+        browser.navigate(link)
+    about_page_selector =  "//nav[contains(@class, 'org-page-navigation')]//li/a[contains(@href, '/about/') and contains(@class, 'org-page-navigation__item-anchor')]"
+    overview_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//p[contains(@class, 'text-body-medium')]"
+    website_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Website']/following::dd[1]//a[@href]"
+    phone_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Phone']/following::dd[1]//a[@href]"
+    industry_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Industry']/following::dd[1]"
+    company_size_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Company size']/following::dd[1]"
+    associated_members_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Company size']/following::dd[2]//a"
+    headquarters_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Headquarters']/following::dd[1]"
+    founded_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Founded']/following::dd[1]"
+    browser.click_element_by_selector(about_page_selector)
+    overview = browser.get_inner_text(overview_selector)
+    website = browser.get_attribute(website_selector,"href")
+    phone = browser.get_inner_text(phone_selector)
+    industry = browser.get_inner_text(industry_selector)
+    company_size  = browser.get_inner_text(company_size_selector)
+    associated_members = browser.get_inner_text(associated_members_selector)
+    headquarters = browser.get_inner_text(headquarters_selector)
+    founded= browser.get_inner_text(founded_selector)
+    return({
+        "overview" : overview,
+        "website" : website,
+        "phone" : phone,
+        "industry" : industry,
+        "company_size" : company_size,
+        "associated_members" : associated_members,
+        "headquarters" : headquarters,
+        "founded" : founded
+    })
+def extract_job(browser,job):
+    company_description_selector = "//div[@id='job-details']//strong[contains(text(),'Company Description')]/following::span/p"
+    role_description_selector = "//div[@id='job-details']//strong[contains(text(),'Role Description')]/following::span/p"
+    qualifications_selector = "//div[@id='job-details']//strong[contains(text(),'Qualifications')]/following::span/ul"
+    company_link_selector = "//div[contains(@class, 'artdeco-entity-lockup__title')]//a[contains(@href, '/company/')]"
+    profile_link_selector = "//div[contains(@class, 'hirer-card__hirer-information')]//a[contains(@class, 'app-aware-link') and contains(@href, 'linkedin.com/in/')]"
+
+    job.click()
+    sleep(2)
+    company_description =  browser.get_inner_text(company_description_selector)
+    role_description = browser.get_inner_text(role_description_selector)
+    qualifications = browser.get_inner_text(qualifications_selector)
+    company_link = browser.get_attribute(company_link_selector,"href")
+    profile_link = browser.get_attribute(profile_link_selector,"href")
+    sleep(10)
+    #browser2 = Browser()
+    #browser2.load_cookies_from_file("cookies.txt")
+    """
+    if profile_link:
+        profile_data = scrape_linkedin_profile(browser2,profile_link)
+    """
+    info = {
+        'company_description' : company_description,
+        'role_description' : role_description,
+        'qualifications' : qualifications,
+        'company_link' : company_link,
+
+
+
+    }
+    """
+    if profile_link:
+        [info.update(item) for item in profile_data]
+    info.update(extract_company_profile(browser2,company_link))
+    """
+    with open('jobs.csv','w') as f:
+        w = csv.writer(f)
+        w.writerows(info.items())
+    return(info)
+    
+def search_for_jobs(browser,keywords,current_job_id,refresh):
+
+    
+ 
+    browser.navigate(f"https://www.linkedin.com/jobs/search/?currentJobId={current_job_id}&keywords={keywords}&refresh={refresh}")
+
+    jobs = browser.find_elements_by_xpath("//li[contains(@class,'jobs-search-results__list-item')]")
+    for job in jobs:
+        extract_job(browser,job)
 
 def main():
-    linkedin_profiles = get_linkedin_profiles('links2.txt')
-    for profile_url in linkedin_profiles:
-        scrape_linkedin_profile(profile_url)
-        sleep(60)
+    browser = Browser()
+    browser.load_cookies_from_file("cookies.txt")
+    search_for_jobs(browser,"marketing","3500425629","true")
+
 main()
