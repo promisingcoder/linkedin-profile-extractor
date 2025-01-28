@@ -1,0 +1,48 @@
+## instructions.txt :
+# Begin loop over profile URLs in links2.txt
+LOOP profile_url IN links2.txt
+
+# Navigate to the profile URL
+NAVIGATE ${profile_url}
+SLEEP 3
+
+# Scrape profile data
+
+# Get the name
+GET_INNER_TEXT "//h1[contains(@class, 't-24')]" name
+
+# Get the headline/description
+GET_INNER_TEXT "//div[contains(@class, 'text-body-medium break-words')]" headline
+
+# Get the 'About' section
+GET_INNER_TEXT "//section[@id='about']//div[contains(@class, 'pv-shared-text-with-see-more')]/div/span[1]" about
+
+# Click to open contact info
+CLICK_ELEMENT_BY_SELECTOR "//a[@id='top-card-text-details-contact-info']"
+SLEEP 2
+
+# Scrape contact info
+
+# Get LinkedIn URL
+GET_ATTRIBUTE "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Profile')]]//a" href linkedin_url
+
+# Get Websites (concatenate if multiple)
+GET_ATTRIBUTE "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Website')]]//ul/li//a" href websites
+
+# Get Phone Number
+GET_INNER_TEXT "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Phone')]]//span[contains(@class, 't-black') and not(contains(@class, 't-black--light'))]" phone
+
+# Get Email
+GET_INNER_TEXT "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Email')]]//a" email
+
+# Get Birthday
+GET_INNER_TEXT "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Birthday')]]//span[contains(@class, 't-black')]" birthday
+
+# Get Connected Date
+GET_INNER_TEXT "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Connected')]]//span[contains(@class, 't-black')]" connected_date
+
+# Save the scraped data to CSV
+SAVE_TO_CSV profiles1.csv
+
+# End of loop
+ENDLOOP

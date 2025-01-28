@@ -1,49 +1,69 @@
-import undetected_chromedriver as uc
-from time import sleep
-import chromedriver_autoinstaller
-from click_element_by_selector import click_element_by_selector
-from fill_input import fill_input
-from load_cookies import load_cookies
-from save_cookies import save_cookies
-from get_attribute_value import get_attribute_value
-from get_inner_text import get_inner_text
-import os
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-import logging
-import os
-import shutil
-import csv
-from selenium.common.exceptions import TimeoutException
-from find_elements_by_xpath import find_elements_by_xpath
+import undetected_chromedriver as uc  # Import the undetected_chromedriver module to evade detection
+from time import sleep  # Import sleep function to add delays
+import chromedriver_autoinstaller  # Import to ensure the correct chromedriver version is installed
+from click_element_by_selector import click_element_by_selector  # Import custom function to click elements
+from fill_input import fill_input  # Import custom function to fill input fields
+from load_cookies import load_cookies  # Import custom function to load browser cookies
+from save_cookies import save_cookies  # Import custom function to save browser cookies
+from get_attribute_value import get_attribute_value  # Import custom function to get attribute values
+from get_inner_text import get_inner_text  # Import custom function to get inner text of elements
+import os  # Import OS module for operating system functionality
+from selenium.webdriver.support.ui import WebDriverWait  # Import for explicit waits
+from selenium.webdriver.support import expected_conditions as EC  # Import expected conditions for waits
+from selenium.webdriver.common.by import By  # Import for element location strategies
+import logging  # Import logging module
+import shutil  # Import to perform high-level file operations
+import csv  # Import CSV module to read and write CSV files
+from selenium.common.exceptions import TimeoutException  # Import exception handling for timeouts
+import sys  # Import sys module to access command-line arguments
+import argparse  # Import argparse for command-line argument parsing
 
 
 class HeadlessBrowser:
     def __init__(self):
+        # Ensure the correct chromedriver version is installed
+        chromedriver_autoinstaller.install()
+        # Get the major version of Chrome
+        chrome_version = int(chromedriver_autoinstaller.get_chrome_version().split('.')[0])
+        print(f"Installed Chrome version: {chrome_version}")
 
-        self.driver = uc.Chrome(options=self.get_options())  # Use your current Chrome major version
+        # Initialize the Chrome driver with specified options and version
+        self.driver = uc.Chrome(
+            options=self.get_options(),
+            version_main=chrome_version  # Use the detected Chrome version here
+        )
 
     def get_options(self):
+        # Set Chrome options for the headless browser
         options = uc.ChromeOptions()
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_argument('--no-sandbox')  # Bypass OS security model
+        options.add_argument('--disable-dev-shm-usage')  # Overcome limited resource problems
+        options.add_argument('--disable-blink-features=AutomationControlled')  # Disable automation controls
         return options
 
     def quit(self):
+        # Close the browser and end the session
         self.driver.quit()
 
 
 class Browser:
-    number_of_windows = 0
-    current_window = 0
+    number_of_windows = 0  # Class variable to track the number of open windows
+    current_window = 0  # Class variable to track the current window index
+
     def __init__(self):
+        # Initialize the browser with a headless browser instance
         self.headless_browser = HeadlessBrowser()
+        self.variables = {}  # Dictionary to store variables and scraped data
+        self.instruction_pointer = 0  # Pointer to keep track of instruction index
+        self.instructions = []  # List to store instructions
+        self.loop_stack = []  # Stack to handle nested loops
 
     def navigate(self, url):
+        # Navigate to the specified URL
         self.headless_browser.driver.get(url)
+
     """
+    # Methods for managing browser windows (currently commented out)
     def switch_to_previous_window(self):
         self.headless_browser.driver.switch_to.window(self.headless_browser.driver.window_handles[self.current_window-1])
     def new_window(self):
@@ -51,238 +71,230 @@ class Browser:
         self.number_of_windows += 1
         sleep(100)
         self.headless_browser.driver.switch_to.window(self.headless_browser.driver.window_handles[self.number_of_windows])
-        
-
         self.current_window = self.number_of_windows
         print(f"number of open  windows {self.number_of_windows}")
         return(self.number_of_windows)
-    
     def navigate_to_window(self,window_number):
         self.headless_browser.driver.switch_to.window(self.headless_browser.driver.window_handles[window_number])
     """
-    def find_elements_by_xpath(self, selector):
-        return(find_elements_by_xpath(self.headless_browser.driver,selector))
+
     def close(self):
+        # Close the browser session
         self.headless_browser.quit()
 
     def fill_input(self, selector, value):
         """Fill an input field identified by a CSS selector."""
-        fill_input(self.headless_browser.driver, selector, value)  # Call the existing function
+        # Use the custom function to fill the input field
+        fill_input(self.headless_browser.driver, selector, value)
 
     def click_element_by_selector(self, selector):
         """Click an element identified by a CSS selector."""
-        click_element_by_selector(self.headless_browser.driver, selector)  # Call the existing function
+        # Use the custom function to click the element
+        click_element_by_selector(self.headless_browser.driver, selector)
 
     def load_cookies_from_file(self, path):
         """Load cookies from a specified file into the browser."""
+        # Use the custom function to load cookies
         load_cookies(self.headless_browser.driver, path)
 
     def save_cookies_to_file(self, output_file_path):
         """Save cookies from the browser to a specified file."""
-        save_cookies(self.headless_browser.driver, output_file_path)  # Pass the driver object
+        # Use the custom function to save cookies
+        save_cookies(self.headless_browser.driver, output_file_path)
 
     def get_inner_text(self, selector):
         """Get the inner text of an element identified by a CSS selector."""
+        # Use the custom function to get inner text
         return get_inner_text(self.headless_browser.driver, selector)
 
     def get_attribute(self, selector, attribute):
         """Get the value of a specified attribute from an element identified by a CSS selector."""
+        # Use the custom function to get the attribute value
         return get_attribute_value(self.headless_browser.driver, selector, attribute)
 
+    def get_inner_text_list(self, selector):
+        """Get a list of inner texts from elements identified by an XPath selector."""
+        elements = self.headless_browser.driver.find_elements(By.XPATH, selector)
+        return [element.text for element in elements]
 
+    def save_to_csv(self, filename):
+        """Save the variables dictionary to a CSV file."""
+        fieldnames = list(self.variables.keys())
 
-def scrape_profile(browser, profile_url):
-    """Scrape the relevant parts of the LinkedIn profile using the Browser instance."""
-    browser.navigate(profile_url)
-    sleep(3)  # Wait for the page to load
+        # Check if the file exists to determine whether to write headers
+        file_exists = os.path.isfile(filename)
 
-    profile_data = {}
-    
-    try:
-        # Scrape the profile name
-        profile_data['name'] = browser.get_inner_text('//h1[contains(@class, "text-heading-xlarge")]')
-    except TimeoutException:
-        profile_data['name'] = "N/A"
-        print("Profile name not found")
+        # Open the CSV file in append mode
+        with open(filename, mode='a', newline='', encoding='utf-8') as file:
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
 
-    try:
-        # Scrape the profile headline
-        profile_data['headline'] = browser.get_inner_text('//div[contains(@class, "text-body-medium break-words")]')
-    except TimeoutException:
-        profile_data['headline'] = "N/A"
-        print("Profile headline not found")
+            # Write header only if the file does not exist
+            if not file_exists:
+                writer.writeheader()
 
-    try:
-        # Scrape the current company
-        profile_data['current_company'] = browser.get_inner_text('//li[contains(@class, "pv-top-card--experience-list-item")]//span[contains(@class, "visually-hidden")]')
-    except TimeoutException:
-        profile_data['current_company'] = "N/A"
-        print("Current company not found")
+            # Write the variables to the CSV file
+            writer.writerow(self.variables)
 
-    try:
-        # Scrape the location
-        profile_data['location'] = browser.get_inner_text('//span[contains(@class, "text-body-small inline t-black--light break-words")]')
-    except TimeoutException:
-        profile_data['location'] = "N/A"
-        print("Location not found")
-    
-    return profile_data
+        # Clear variables after saving to prevent data overlap
+        self.variables.clear()
 
-def scrape_contact_info(browser):
-    """Click on the 'Contact info' link and scrape the contact information using the Browser instance."""
-    browser.click_element('//a[@id="top-card-text-details-contact-info"]')
-    sleep(2)  # Wait for the modal to load
+    def execute_instructions(self, file_path):
+        """Execute instructions from a text file."""
+        # Load all instructions into a list
+        with open(file_path, 'r') as file:
+            self.instructions = [line.strip() for line in file if line.strip() and not line.strip().startswith('#')]
 
-    contact_info = {}
-    
-    try:
-        # Scrape the LinkedIn profile URL
-        contact_info['linkedin_url'] = browser.get_inner_text('//section[contains(@class, "pv-contact-info__contact-type")]//a[contains(@href, "linkedin.com/in")]')
-    except TimeoutException:
-        contact_info['linkedin_url'] = "N/A"
-        print("LinkedIn URL not found")
+        # Reset instruction pointer and loop stack
+        self.instruction_pointer = 0
+        self.loop_stack = []
 
-    try:
-        # Scrape the websites
-        websites = browser.headless_browser.driver.find_elements(By.XPATH, '//section[contains(@class, "pv-contact-info__contact-type")]//a[contains(@href, "http")]')
-        contact_info['websites'] = [website.get_attribute('href') for website in websites]
-    except TimeoutException:
-        contact_info['websites'] = []
-        print("Websites not found")
-    
-    return contact_info
+        # Execute instructions
+        while self.instruction_pointer < len(self.instructions):
+            line = self.instructions[self.instruction_pointer]
+            self.execute_command(line)
+            self.instruction_pointer += 1
 
-def save_to_csv(profile_data, contact_info, filename="profiles_spa.csv"):
-    """Save the profile and contact information to a CSV file, appending each profile as a new row."""
-    fieldnames = ['name', 'headline', 'current_company', 'location', 'linkedin_url', 'websites']
-    
-    # Combine profile_data and contact_info into a single dictionary
-    combined_data = {**profile_data, **contact_info}
-    
-    # Convert websites list to a string
-    combined_data['websites'] = ', '.join(combined_data['websites'])
-    
-    # Check if the file exists to write the header only once
-    file_exists = os.path.isfile(filename)
-    
-    # Write to CSV
-    with open(filename, mode='a', newline='', encoding='utf-8') as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        
-        # Write header only if the file does not exist
-        if not file_exists:
-            writer.writeheader()
-        
-        # Write data
-        writer.writerow(combined_data)
-def get_linkedin_profiles(file_path):
-    """Return a list of LinkedIn profile URLs from the given file, excluding web.archive links."""
-    linkedin_profiles = []
-    with open(file_path, 'r') as file:
-        for line in file:
-            url = line.strip()
-            if "linkedin.com/in" in url and "web.archive.org" not in url:
-                linkedin_profiles.append(url)
-    return linkedin_profiles
-def scrape_linkedin_profile(browser,profile_url):
+    def execute_command(self, line):
+        """Parse and execute a single instruction line with variable substitution."""
+        # Replace variables in the line
+        line = self.replace_variables(line)
+        parts = line.strip().split(' ', 1)
+        command = parts[0].upper()
+        args = parts[1] if len(parts) > 1 else ''
 
-    # Load cookies
-    
-    
-    # Scrape profile information
-    profile_data = scrape_profile(browser, profile_url)
-    print("Profile Data:", profile_data)
-    
-    # Scrape contact information
-    contact_info = scrape_contact_info(browser)
-    print("Contact Info:", contact_info)
-    # Save to CSV
-    #save_to_csv(profile_data, contact_info)
-    return((profile_data,contact_info))
-def extract_company_profile(browser,link):
-    if link:
-        browser.navigate(link)
-    about_page_selector =  "//nav[contains(@class, 'org-page-navigation')]//li/a[contains(@href, '/about/') and contains(@class, 'org-page-navigation__item-anchor')]"
-    overview_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//p[contains(@class, 'text-body-medium')]"
-    website_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Website']/following::dd[1]//a[@href]"
-    phone_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Phone']/following::dd[1]//a[@href]"
-    industry_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Industry']/following::dd[1]"
-    company_size_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Company size']/following::dd[1]"
-    associated_members_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Company size']/following::dd[2]//a"
-    headquarters_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Headquarters']/following::dd[1]"
-    founded_selector = "//section[contains(@class, 'org-page-details-module__card-spacing')]//h3[text()='Founded']/following::dd[1]"
-    browser.click_element_by_selector(about_page_selector)
-    overview = browser.get_inner_text(overview_selector)
-    website = browser.get_attribute(website_selector,"href")
-    phone = browser.get_inner_text(phone_selector)
-    industry = browser.get_inner_text(industry_selector)
-    company_size  = browser.get_inner_text(company_size_selector)
-    associated_members = browser.get_inner_text(associated_members_selector)
-    headquarters = browser.get_inner_text(headquarters_selector)
-    founded= browser.get_inner_text(founded_selector)
-    return({
-        "overview" : overview,
-        "website" : website,
-        "phone" : phone,
-        "industry" : industry,
-        "company_size" : company_size,
-        "associated_members" : associated_members,
-        "headquarters" : headquarters,
-        "founded" : founded
-    })
-def extract_job(browser,job):
-    company_description_selector = "//div[@id='job-details']//strong[contains(text(),'Company Description')]/following::span/p"
-    role_description_selector = "//div[@id='job-details']//strong[contains(text(),'Role Description')]/following::span/p"
-    qualifications_selector = "//div[@id='job-details']//strong[contains(text(),'Qualifications')]/following::span/ul"
-    company_link_selector = "//div[contains(@class, 'artdeco-entity-lockup__title')]//a[contains(@href, '/company/')]"
-    profile_link_selector = "//div[contains(@class, 'hirer-card__hirer-information')]//a[contains(@class, 'app-aware-link') and contains(@href, 'linkedin.com/in/')]"
+        try:
+            if command == 'NAVIGATE':
+                self.navigate(args.strip())
+            elif command == 'SLEEP':
+                sleep(float(args.strip()))
+            elif command == 'GET_INNER_TEXT':
+                # Args format: "selector" variable_name
+                selector, var_name = self.parse_args(args)
+                text = self.get_inner_text(selector)
+                self.variables[var_name] = text
+            elif command == 'GET_ATTRIBUTE':
+                # Args format: "selector" attribute_name variable_name
+                selector, attribute_name, var_name = self.parse_args(args, expected_args=3)
+                value = self.get_attribute(selector, attribute_name)
+                self.variables[var_name] = value
+            elif command == 'GET_INNER_TEXT_LIST':
+                # Args format: "selector" variable_name
+                selector, var_name = self.parse_args(args)
+                texts = self.get_inner_text_list(selector)
+                self.variables[var_name] = ', '.join(texts)  # Join texts into a single string
+            elif command == 'CLICK_ELEMENT_BY_SELECTOR':
+                selector = args.strip('"\'')
+                self.click_element_by_selector(selector)
+            elif command == 'FILL_INPUT':
+                # Args format: "selector" value
+                selector, value = self.parse_args(args)
+                self.fill_input(selector, value)
+            elif command == 'SAVE_TO_CSV':
+                filename = args.strip()
+                self.save_to_csv(filename)
+            elif command == 'SET':
+                var_name, value = args.split(' ', 1)
+                self.variables[var_name.strip()] = value.strip()
+            elif command == 'LOOP':
+                # Args format: variable_name IN filepath
+                loop_var, in_keyword, filepath = args.strip().split(' ', 2)
+                if in_keyword.upper() != 'IN':
+                    raise ValueError("Invalid LOOP syntax. Use: LOOP var_name IN filepath")
+                # Read lines from the file and store in loop stack
+                with open(filepath.strip(), 'r') as f:
+                    items = [line.strip() for line in f if line.strip()]
+                self.loop_stack.append({
+                    'loop_var': loop_var.strip(),
+                    'items': items,
+                    'current_index': 0,
+                    'start_pointer': self.instruction_pointer
+                })
+                # Set the first value of the loop variable
+                if items:
+                    self.variables[loop_var.strip()] = items[0]
+                else:
+                    # Skip the loop if no items
+                    self.skip_loop()
+            elif command == 'ENDLOOP':
+                if not self.loop_stack:
+                    raise ValueError("ENDLOOP found without matching LOOP")
+                loop_info = self.loop_stack[-1]
+                loop_info['current_index'] += 1
+                if loop_info['current_index'] < len(loop_info['items']):
+                    # Update loop variable and jump back to loop start
+                    self.variables[loop_info['loop_var']] = loop_info['items'][loop_info['current_index']]
+                    self.instruction_pointer = loop_info['start_pointer']
+                else:
+                    # Exit the loop
+                    self.loop_stack.pop()
+            else:
+                print(f"Unknown command: {command}")
+        except Exception as e:
+            print(f"Error executing command '{line}': {e}")
 
-    job.click()
-    sleep(2)
-    company_description =  browser.get_inner_text(company_description_selector)
-    role_description = browser.get_inner_text(role_description_selector)
-    qualifications = browser.get_inner_text(qualifications_selector)
-    company_link = browser.get_attribute(company_link_selector,"href")
-    profile_link = browser.get_attribute(profile_link_selector,"href")
-    sleep(10)
-    #browser2 = Browser()
-    #browser2.load_cookies_from_file("cookies.txt")
-    """
-    if profile_link:
-        profile_data = scrape_linkedin_profile(browser2,profile_link)
-    """
-    info = {
-        'company_description' : company_description,
-        'role_description' : role_description,
-        'qualifications' : qualifications,
-        'company_link' : company_link,
+    def skip_loop(self):
+        """Skip instructions until ENDLOOP is found."""
+        nested_loops = 1
+        while nested_loops > 0 and self.instruction_pointer < len(self.instructions) - 1:
+            self.instruction_pointer += 1
+            line = self.instructions[self.instruction_pointer]
+            cmd = line.strip().split(' ', 1)[0].upper()
+            if cmd == 'LOOP':
+                nested_loops += 1
+            elif cmd == 'ENDLOOP':
+                nested_loops -= 1
 
+    def replace_variables(self, line):
+        """Substitute variables in the instruction line."""
+        for var_name, value in self.variables.items():
+            placeholder = f'${{{var_name}}}'
+            if placeholder in line:
+                line = line.replace(placeholder, value)
+        return line
 
+    def parse_args(self, args, expected_args=2):
+        """Parse arguments from a command line."""
+        parts = []
+        current = ''
+        in_quotes = False
+        quote_char = ''
+        for c in args:
+            if c in ('"', "'"):
+                if in_quotes and c == quote_char:
+                    in_quotes = False
+                elif not in_quotes:
+                    in_quotes = True
+                    quote_char = c
+                else:
+                    current += c  # Inside quotes, different quote character
+            elif c == ' ' and not in_quotes:
+                if current:
+                    parts.append(current)
+                    current = ''
+            else:
+                current += c
+        if current:
+            parts.append(current)
 
-    }
-    """
-    if profile_link:
-        [info.update(item) for item in profile_data]
-    info.update(extract_company_profile(browser2,company_link))
-    """
-    with open('jobs.csv','w') as f:
-        w = csv.writer(f)
-        w.writerows(info.items())
-    return(info)
-    
-def search_for_jobs(browser,keywords,current_job_id,refresh):
+        if len(parts) != expected_args:
+            raise ValueError(f"Expected {expected_args} arguments, got {len(parts)}")
+        return parts
 
-    
- 
-    browser.navigate(f"https://www.linkedin.com/jobs/search/?currentJobId={current_job_id}&keywords={keywords}&refresh={refresh}")
+# Example usage:
+if __name__ == "__main__":
+    def main():
+        """Main function to initiate the instruction execution."""
+        parser = argparse.ArgumentParser(description='Browser automation script.')
+        parser.add_argument('-i', '--instructions', required=True, help='Path to the instructions file.')
+        args = parser.parse_args()
 
-    jobs = browser.find_elements_by_xpath("//li[contains(@class,'jobs-search-results__list-item')]")
-    for job in jobs:
-        extract_job(browser,job)
+        instructions_file = args.instructions
 
-def main():
-    browser = Browser()
-    browser.load_cookies_from_file("cookies.txt")
-    search_for_jobs(browser,"marketing","3500425629","true")
+        browser = Browser()  # Create a new Browser instance
+        browser.load_cookies_from_file("cookies.txt")  # Load cookies for authentication (if needed)
+        browser.execute_instructions(instructions_file)  # Execute instructions from the specified file
+        print("Scraped Data:", browser.variables)
+        browser.close()  # Close the browser session
 
-main()
+    # Execute the main function when the script is run
+    main()
