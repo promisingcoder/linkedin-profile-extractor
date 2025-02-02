@@ -1,48 +1,48 @@
-## instructions.txt :
+## instructions.txt:
 # Begin loop over profile URLs in links2.txt
 LOOP profile_url IN links2.txt
 
-# Navigate to the profile URL
-NAVIGATE ${profile_url}
-SLEEP 3
+  # Navigate to the profile URL
+  NAVIGATE ${profile_url}
+  SLEEP 3
 
-# Scrape profile data
+  # Scrape profile data
 
-# Get the name
-GET_INNER_TEXT "//h1[contains(@class, 't-24')]" name
+  # Get the Name (using the t-24 class which is common for the profile name)
+  GET_INNER_TEXT "//h1[contains(@class, 't-24')]" name
 
-# Get the headline/description
-GET_INNER_TEXT "//div[contains(@class, 'text-body-medium break-words')]" headline
+  # Get the Headline/Description (using classes typically found on the headline element)
+  GET_INNER_TEXT "//div[contains(@class, 'text-body-medium') and contains(@class, 'break-words')]" headline
 
-# Get the 'About' section
-GET_INNER_TEXT "//section[@id='about']//div[contains(@class, 'pv-shared-text-with-see-more')]/div/span[1]" about
+  # Get the About section (if present; many profiles have an "About" section with an id)
+  GET_INNER_TEXT "//section[@id='about']//p" about
 
-# Click to open contact info
-CLICK_ELEMENT_BY_SELECTOR "//a[@id='top-card-text-details-contact-info']"
-SLEEP 2
+  # Click the Contact Info button
+  CLICK_ELEMENT_BY_SELECTOR "//a[@id='top-card-text-details-contact-info']"
+  SLEEP 2
 
-# Scrape contact info
+  # Now that the Contact Info modal is open (it uses role="dialog"), scrape its data:
 
-# Get LinkedIn URL
-GET_ATTRIBUTE "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Profile')]]//a" href linkedin_url
+  # Get LinkedIn URL (find an anchor containing 'linkedin.com/in' inside the dialog)
+  GET_ATTRIBUTE "//div[@role='dialog']//a[contains(@href, 'linkedin.com/in')]" href linkedin_url
 
-# Get Websites (concatenate if multiple)
-GET_ATTRIBUTE "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Website')]]//ul/li//a" href websites
+  # Get Websites (look for a section with a header containing 'Websites' in the dialog)
+  GET_ATTRIBUTE "//div[@role='dialog']//section[h3[contains(., 'Website')]]//a" href websites
 
-# Get Phone Number
-GET_INNER_TEXT "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Phone')]]//span[contains(@class, 't-black') and not(contains(@class, 't-black--light'))]" phone
+  # Get Phone Number (if present; using a generic header text match for 'Phone')
+  GET_INNER_TEXT "//div[@role='dialog']//section[h3[contains(., 'Phone')]]//span[not(contains(@class, 't-black--light'))]" phone
 
-# Get Email
-GET_INNER_TEXT "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Email')]]//a" email
+  # Get Email (if present; using a generic header text match for 'Email')
+  GET_INNER_TEXT "//div[@role='dialog']//section[h3[contains(., 'Email')]]//a" email
 
-# Get Birthday
-GET_INNER_TEXT "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Birthday')]]//span[contains(@class, 't-black')]" birthday
+  # Get Birthday (if present; using a generic header text match for 'Birthday')
+  GET_INNER_TEXT "//div[@role='dialog']//section[h3[contains(., 'Birthday')]]//span[contains(@class, 't-black')]" birthday
 
-# Get Connected Date
-GET_INNER_TEXT "//section[contains(@class,'pv-contact-info__contact-type')][.//h3[contains(text(),'Connected')]]//span[contains(@class, 't-black')]" connected_date
+  # Get Connected Date (if present; using a generic header text match for 'Connected')
+  GET_INNER_TEXT "//div[@role='dialog']//section[h3[contains(., 'Connected')]]//span[contains(@class, 't-black')]" connected_date
 
-# Save the scraped data to CSV
-SAVE_TO_CSV profiles1.csv
+  # Save the scraped data to CSV
+  SAVE_TO_CSV profiles1.csv
 
 # End of loop
 ENDLOOP

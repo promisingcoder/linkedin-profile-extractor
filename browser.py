@@ -167,6 +167,18 @@ class Browser:
                 self.navigate(args.strip())
             elif command == 'SLEEP':
                 sleep(float(args.strip()))
+            elif command == 'WAIT_FOR':
+                # Args format: "selector"
+                selector = args.strip('"\'')
+                WebDriverWait(self.headless_browser.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, selector))
+                )
+            elif command == 'WAIT_CLICKABLE':
+                # Args format: "selector"
+                selector = args.strip('"\'')
+                WebDriverWait(self.headless_browser.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, selector))
+                )
             elif command == 'GET_INNER_TEXT':
                 # Args format: "selector" variable_name
                 selector, var_name = self.parse_args(args)
@@ -178,10 +190,12 @@ class Browser:
                 value = self.get_attribute(selector, attribute_name)
                 self.variables[var_name] = value
             elif command == 'GET_INNER_TEXT_LIST':
-                # Args format: "selector" variable_name
-                selector, var_name = self.parse_args(args)
+                # Args format: "selector" variable_name [separator]
+                parts = self.parse_args_flexible(args)
+                selector, var_name = parts[0], parts[1]
+                separator = parts[2] if len(parts) > 2 else ', '
                 texts = self.get_inner_text_list(selector)
-                self.variables[var_name] = ', '.join(texts)  # Join texts into a single string
+                self.variables[var_name] = separator.join(texts)
             elif command == 'CLICK_ELEMENT_BY_SELECTOR':
                 selector = args.strip('"\'')
                 self.click_element_by_selector(selector)
@@ -195,25 +209,51 @@ class Browser:
             elif command == 'SET':
                 var_name, value = args.split(' ', 1)
                 self.variables[var_name.strip()] = value.strip()
+            elif command == 'PRINT':
+                # Print variable or text
+                value = args.strip()
+                if value.startswith('${') and value.endswith('}'):
+                    var_name = value[2:-1]
+                    print(f"{var_name}: {self.variables.get(var_name, 'Not found')}")
+                else:
+                    print(value)
+            elif command == 'IF':
+                # Args format: variable operator value
+                condition = self.evaluate_condition(args)
+                if not condition:
+                    self.skip_until('ENDIF')
+            elif command == 'ENDIF':
+                pass  # Just a marker for IF blocks
             elif command == 'LOOP':
+                # Support both file-based and list-based loops
                 # Args format: variable_name IN filepath
-                loop_var, in_keyword, filepath = args.strip().split(' ', 2)
-                if in_keyword.upper() != 'IN':
-                    raise ValueError("Invalid LOOP syntax. Use: LOOP var_name IN filepath")
-                # Read lines from the file and store in loop stack
-                with open(filepath.strip(), 'r') as f:
-                    items = [line.strip() for line in f if line.strip()]
+                # or: variable_name IN [item1, item2, ...]
+                loop_var = args.split(' ', 1)[0].strip()
+                remaining = args.split(' ', 1)[1].strip()
+                
+                if not remaining.upper().startswith('IN'):
+                    raise ValueError("Invalid LOOP syntax. Use: LOOP var_name IN source")
+                
+                source = remaining[2:].strip()
+                
+                if source.startswith('[') and source.endswith(']'):
+                    # List-based loop
+                    items = [item.strip() for item in source[1:-1].split(',')]
+                else:
+                    # File-based loop
+                    with open(source.strip(), 'r') as f:
+                        items = [line.strip() for line in f if line.strip()]
+                
                 self.loop_stack.append({
-                    'loop_var': loop_var.strip(),
+                    'loop_var': loop_var,
                     'items': items,
                     'current_index': 0,
                     'start_pointer': self.instruction_pointer
                 })
-                # Set the first value of the loop variable
+                
                 if items:
-                    self.variables[loop_var.strip()] = items[0]
+                    self.variables[loop_var] = items[0]
                 else:
-                    # Skip the loop if no items
                     self.skip_loop()
             elif command == 'ENDLOOP':
                 if not self.loop_stack:
@@ -221,16 +261,84 @@ class Browser:
                 loop_info = self.loop_stack[-1]
                 loop_info['current_index'] += 1
                 if loop_info['current_index'] < len(loop_info['items']):
-                    # Update loop variable and jump back to loop start
                     self.variables[loop_info['loop_var']] = loop_info['items'][loop_info['current_index']]
                     self.instruction_pointer = loop_info['start_pointer']
                 else:
-                    # Exit the loop
                     self.loop_stack.pop()
+            elif command == 'SCROLL_TO':
+                # Args format: "selector"
+                selector = args.strip('"\'')
+                element = self.headless_browser.driver.find_element(By.XPATH, selector)
+                self.headless_browser.driver.execute_script("arguments[0].scrollIntoView(true);", element)
+            elif command == 'SCROLL':
+                # Args format: direction (UP/DOWN) [pixels]
+                parts = args.split()
+                direction = parts[0].upper()
+                pixels = int(parts[1]) if len(parts) > 1 else 300
+                if direction == 'UP':
+                    pixels = -pixels
+                self.headless_browser.driver.execute_script(f"window.scrollBy(0, {pixels});")
             else:
                 print(f"Unknown command: {command}")
         except Exception as e:
             print(f"Error executing command '{line}': {e}")
+
+    def evaluate_condition(self, condition):
+        """Evaluate a condition for IF statements."""
+        parts = condition.split()
+        if len(parts) != 3:
+            raise ValueError("Invalid condition format. Use: variable operator value")
+        
+        var_name, operator, value = parts
+        var_value = self.variables.get(var_name)
+        
+        if operator == '==':
+            return str(var_value) == value
+        elif operator == '!=':
+            return str(var_value) != value
+        elif operator == 'CONTAINS':
+            return value in str(var_value)
+        elif operator == 'NOT_CONTAINS':
+            return value not in str(var_value)
+        else:
+            raise ValueError(f"Unknown operator: {operator}")
+
+    def skip_until(self, end_command):
+        """Skip instructions until the specified end command is found."""
+        while self.instruction_pointer < len(self.instructions) - 1:
+            self.instruction_pointer += 1
+            line = self.instructions[self.instruction_pointer]
+            cmd = line.strip().split(' ', 1)[0].upper()
+            if cmd == end_command:
+                break
+
+    def parse_args_flexible(self, args):
+        """Parse arguments from a command line with optional parameters."""
+        parts = []
+        current = ''
+        in_quotes = False
+        quote_char = ''
+        
+        for c in args:
+            if c in ('"', "'"):
+                if in_quotes and c == quote_char:
+                    in_quotes = False
+                elif not in_quotes:
+                    in_quotes = True
+                    quote_char = c
+                else:
+                    current += c
+            elif c == ' ' and not in_quotes:
+                if current:
+                    parts.append(current)
+                    current = ''
+            else:
+                current += c
+                
+        if current:
+            parts.append(current)
+            
+        return parts
 
     def skip_loop(self):
         """Skip instructions until ENDLOOP is found."""
@@ -291,6 +399,7 @@ if __name__ == "__main__":
         instructions_file = args.instructions
 
         browser = Browser()  # Create a new Browser instance
+        #browser.save_cookies_to_file("cookies.txt")
         browser.load_cookies_from_file("cookies.txt")  # Load cookies for authentication (if needed)
         browser.execute_instructions(instructions_file)  # Execute instructions from the specified file
         print("Scraped Data:", browser.variables)
