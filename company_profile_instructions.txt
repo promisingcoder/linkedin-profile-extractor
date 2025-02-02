@@ -1,0 +1,64 @@
+# Begin loop over company URLs in company_links.txt
+LOOP company_url IN company_links.txt
+
+  # Navigate to the company URL
+  NAVIGATE ${company_url}
+  SLEEP 3
+
+  # Wait for the top card to load
+  WAIT_FOR "//div[contains(@class, 'org-top-card')]"
+
+  # --- Top Card Data ---
+  # Get Company Logo URL
+  GET_ATTRIBUTE "//div[contains(@class, 'org-top-card-primary-content__logo-container')]//img" src company_logo
+
+  # Get Company Name
+  GET_INNER_TEXT "//h1[contains(@class, 'org-top-card-summary__title')]" company_name
+
+  # Wait for and Get Company Tagline
+  WAIT_FOR "//p[contains(@class, 'org-top-card-summary__tagline')]"
+  GET_INNER_TEXT "//p[contains(@class, 'org-top-card-summary__tagline')]" tagline
+
+  # --- Summary Info (Industry, Location, Followers, Company Size) ---
+  # Note: The summary info is typically split into two parts:
+  #   • A standalone info item (commonly the Industry)
+  #   • An inline-block group containing Location, Followers, and Company Size.
+  GET_INNER_TEXT "(//div[contains(@class, 'org-top-card-summary-info-list')]/div[contains(@class, 'org-top-card-summary-info-list__info-item')])[1]" industry
+  GET_INNER_TEXT "(//div[contains(@class, 'org-top-card-summary-info-list')]/div[contains(@class, 'inline-block')]/div[contains(@class, 'org-top-card-summary-info-list__info-item')])[1]" location
+  GET_INNER_TEXT "(//div[contains(@class, 'org-top-card-summary-info-list')]/div[contains(@class, 'inline-block')]/div[contains(@class, 'org-top-card-summary-info-list__info-item')])[2]" followers
+  GET_INNER_TEXT "//div[contains(@class, 'org-top-card-summary-info-list')]/div[contains(@class, 'inline-block')]//a[contains(@class, 'org-top-card-summary-info-list__info-item')]" company_size
+
+  # Get Company Website URL from the primary action (opens in a new tab)
+  GET_ATTRIBUTE "//a[contains(@class, 'org-top-card-primary-actions__action') and @target='_blank']" href website_url
+
+  # Get Company Cover Image URL from the inline style of the cover container
+  GET_ATTRIBUTE "//div[contains(@class, 'org-cropped-image__cover-image')]" style cover_image_style
+
+  # Check for Verified Badge (if the SVG exists, grab an attribute; otherwise, the field stays empty)
+  GET_ATTRIBUTE "//a[contains(@href, '/about/')]/svg[contains(@data-test-icon, 'verified-medium')]" data-test-icon verified_status
+
+  # --- Additional Overview Module (present on the main page) ---
+  # This module contains an extended company description ("Overview"), extra contact info, and funding details.
+
+  # Get Company Overview text (the complete description text from the Overview module)
+  GET_INNER_TEXT "//div[contains(@class, 'organization-about-module__content-consistant-cards-description')]" overview
+
+  # Get Additional Contact Info (from the "Contact info" box within the module)
+  GET_INNER_TEXT "//div[contains(@class, 'org-about-module__content-box')]/header[h3[contains(., 'Contact info')]]/following-sibling::div" additional_contact
+
+  # Get Funding via Crunchbase details:
+  # Funding type (e.g. "Debt financing")
+  GET_INNER_TEXT "//div[contains(@class, 'org-funding-info__content')]/a/p" funding_type
+  # Funding amount (e.g. "US$ 4B")
+  GET_INNER_TEXT "//div[contains(@class, 'org-funding-info__content')]/p[contains(@class, 't-bold')]" funding_amount
+  # Total investors (e.g. "9 total investors")
+  GET_INNER_TEXT "//div[contains(@class, 'org-funding-info__content')]/p[contains(@class, 't-black--light')]" total_investors
+
+  # --- Specialties (if available) ---
+  GET_INNER_TEXT_LIST "//div[contains(@class, 'org-about-module__specialties')]//span" specialties |
+
+  # Save all scraped data to CSV
+  SAVE_TO_CSV company_profiles.csv
+
+# End of loop
+ENDLOOP
