@@ -1,0 +1,15 @@
+# This query finds personal profiles of individuals who own medical spas.
+site:linkedin.com/in/ 'medical spa owner'
+
+# This query finds personal profiles of individuals who are proprietors of medical spas.
+site:linkedin.com/in/ 'medical spa proprietor'
+
+# This query finds personal profiles of individuals who own a business in the medical aesthetics field.
+site:linkedin.com/in/ 'medical aesthetic business owner'
+
+# This query finds personal profiles of individuals who own medical spas in New York.
+site:linkedin.com/in/ 'medical spa owner' 'New York'
+
+# This query finds company profiles of medical spas.
+site:linkedin.com/company/ 'medical spa'
+

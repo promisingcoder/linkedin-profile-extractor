@@ -17,6 +17,9 @@ import csv  # Import CSV module to read and write CSV files
 from selenium.common.exceptions import TimeoutException  # Import exception handling for timeouts
 import sys  # Import sys module to access command-line arguments
 import argparse  # Import argparse for command-line argument parsing
+import json
+import random
+import time
 
 
 class HeadlessBrowser:
@@ -151,7 +154,26 @@ class Browser:
         # Execute instructions
         while self.instruction_pointer < len(self.instructions):
             line = self.instructions[self.instruction_pointer]
-            self.execute_command(line)
+            if line.startswith('FOR_EACH_URL'):
+                # Store the loop start position
+                self.loop_stack.append({
+                    'start_pointer': self.instruction_pointer,
+                    'current_url_index': 0
+                })
+            
+            result = self.execute_command(line)
+            
+            # Handle loop iteration
+            if line == 'END_FOR' and self.loop_stack:
+                current_loop = self.loop_stack[-1]
+                current_loop['current_url_index'] += 1
+                if hasattr(self, 'urls') and current_loop['current_url_index'] < len(self.urls):
+                    # Go back to start of loop
+                    self.instruction_pointer = current_loop['start_pointer']
+                else:
+                    # Loop finished, remove it from stack
+                    self.loop_stack.pop()
+            
             self.instruction_pointer += 1
 
     def execute_command(self, line):
@@ -163,7 +185,92 @@ class Browser:
         args = parts[1] if len(parts) > 1 else ''
 
         try:
-            if command == 'NAVIGATE':
+            if command == 'FOR_EACH_URL':
+                # Parse the file path from "IN ${URLS_FILE}"
+                if not args.upper().startswith('IN'):
+                    raise ValueError("Invalid FOR_EACH_URL syntax. Use: FOR_EACH_URL IN file_path")
+                file_path = args.split(' ', 1)[1].strip()
+                # Store URLs for iteration
+                with open(file_path, 'r') as f:
+                    self.urls = [line.strip() for line in f if line.strip()]
+                if self.loop_stack:
+                    self.current_url_index = self.loop_stack[-1]['current_url_index']
+                return True
+                
+            elif command == 'VISIT_URL':
+                if hasattr(self, 'urls') and self.loop_stack:
+                    current_loop = self.loop_stack[-1]
+                    if current_loop['current_url_index'] < len(self.urls):
+                        url = self.urls[current_loop['current_url_index']]
+                        self.headless_browser.driver.get(url)
+                        return True
+                return False
+                
+            elif command == 'WAIT':
+                sleep(float(args.strip()))
+                return True
+                
+            elif command == 'WAIT_RANDOM':
+                min_max = args.split('-')
+                wait_time = random.uniform(float(min_max[0]), float(min_max[1]))
+                sleep(wait_time)
+                return True
+                
+            elif command == 'SAVE_TO':
+                # Save the current data to the specified file
+                output_file = args.strip()
+                if hasattr(self, 'current_data') and self.current_data:
+                    # Create directory if it doesn't exist
+                    os.makedirs(os.path.dirname(output_file) or '.', exist_ok=True)
+                    
+                    # Load existing data to check for duplicates
+                    existing_profiles = []
+                    if os.path.exists(output_file):
+                        try:
+                            with open(output_file, 'r') as f:
+                                for line in f:
+                                    if line.strip():
+                                        try:
+                                            profile = json.loads(line)
+                                            existing_profiles.append(profile)
+                                        except json.JSONDecodeError:
+                                            continue
+                        except Exception as e:
+                            logging.error(f"Error reading existing profiles from {output_file}: {e}")
+                    
+                    # Check if profile is duplicate
+                    is_duplicate = False
+                    if 'linkedin_url' in self.current_data:
+                        current_url = self.current_data.get('linkedin_url')
+                        if current_url:  # Only check if URL is not None
+                            for profile in existing_profiles:
+                                if profile.get('linkedin_url') == current_url:
+                                    is_duplicate = True
+                                    logging.info(f"Skipping duplicate profile: {current_url}")
+                                    break
+                    
+                    # Append new data if not duplicate
+                    if not is_duplicate:
+                        try:
+                            with open(output_file, 'a') as f:
+                                json.dump(self.current_data, f)
+                                f.write('\n')
+                            logging.info(f"Profile saved to {output_file}")
+                        except Exception as e:
+                            logging.error(f"Error saving profile to {output_file}: {e}")
+                    
+                    # Reset current_data after saving or skipping
+                    self.current_data = {}
+                return True
+                
+            elif command == 'END_FOR':
+                return True  # Actual loop handling is done in execute_instructions
+                
+            elif command == 'MARK_COMPLETE':
+                logging.info("Processing completed successfully")
+                return True
+
+            elif command == 'NAVIGATE':
                 self.navigate(args.strip())
             elif command == 'SLEEP':
                 sleep(float(args.strip()))
@@ -179,6 +286,52 @@ class Browser:
                 WebDriverWait(self.headless_browser.driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, selector))
                 )
+            elif command == 'CLICK_ELEMENT_BY_SELECTOR':
+                selector = args.strip('"\'')
+                element = self.headless_browser.driver.find_element(By.XPATH, selector)
+                element.click()
+            elif command == 'EXTRACT':
+                # Parse the JSON rules from args
+                start_idx = args.find('{')
+                end_idx = args.rfind('}')
+                if start_idx == -1 or end_idx == -1:
+                    logging.error("Invalid EXTRACT format")
+                    return None
+
+                rules_dict = json.loads(args[start_idx:end_idx + 1])
+                
+                # Initialize current_data if it doesn't exist
+                if not hasattr(self, 'current_data'):
+                    self.current_data = {}
+                
+                # Extract data according to rules
+                for field, xpath in rules_dict.items():
+                    try:
+                        if xpath.endswith('/@href'):  # Handle attribute extraction
+                            # Remove /@href from xpath and get the attribute separately
+                            base_xpath = xpath.replace('/@href', '')
+                            elements = self.headless_browser.driver.find_elements(By.XPATH, base_xpath)
+                            if elements:
+                                if len(elements) == 1:
+                                    self.current_data[field] = elements[0].get_attribute('href')
+                                else:
+                                    self.current_data[field] = [elem.get_attribute('href') for elem in elements]
+                            else:
+                                self.current_data[field] = None
+                        else:
+                            elements = self.headless_browser.driver.find_elements(By.XPATH, xpath)
+                            if elements:
+                                if len(elements) == 1:
+                                    self.current_data[field] = elements[0].text.strip()
+                                else:
+                                    self.current_data[field] = [elem.text.strip() for elem in elements]
+                            else:
+                                self.current_data[field] = None
+                    except Exception as e:
+                        logging.warning(f"Error extracting {field}: {e}")
+                        self.current_data[field] = None
+                
+                return self.current_data
             elif command == 'GET_INNER_TEXT':
                 # Args format: "selector" variable_name
                 selector, var_name = self.parse_args(args)
@@ -196,9 +349,6 @@ class Browser:
                 separator = parts[2] if len(parts) > 2 else ', '
                 texts = self.get_inner_text_list(selector)
                 self.variables[var_name] = separator.join(texts)
-            elif command == 'CLICK_ELEMENT_BY_SELECTOR':
-                selector = args.strip('"\'')
-                self.click_element_by_selector(selector)
             elif command == 'FILL_INPUT':
                 # Args format: "selector" value
                 selector, value = self.parse_args(args)
@@ -279,9 +429,12 @@ class Browser:
                     pixels = -pixels
                 self.headless_browser.driver.execute_script(f"window.scrollBy(0, {pixels});")
             else:
-                print(f"Unknown command: {command}")
+                logging.warning(f"Unknown command: {command}")
+                return None
+
         except Exception as e:
-            print(f"Error executing command '{line}': {e}")
+            logging.error(f"Error executing command '{line}': {e}")
+            return None
 
     def evaluate_condition(self, condition):
         """Evaluate a condition for IF statements."""
@@ -387,6 +540,54 @@ class Browser:
         if len(parts) != expected_args:
             raise ValueError(f"Expected {expected_args} arguments, got {len(parts)}")
         return parts
+
+    def scrape_profiles(self, urls_file, instructions_file, output_file):
+        """Execute scraping instructions for a list of URLs"""
+        try:
+            # Read URLs from file
+            with open(urls_file, 'r') as f:
+                urls = [line.strip() for line in f if line.strip()]
+
+            # Read instructions file
+            with open(instructions_file, 'r') as f:
+                self.instructions = f.readlines()
+
+            results = []
+            for url in urls:
+                try:
+                    logging.info(f"Processing URL: {url}")
+                    self.headless_browser.driver.get(url)
+                    
+                    # Execute instructions for this URL
+                    for instruction in self.instructions:
+                        instruction = instruction.strip()
+                        if not instruction or instruction.startswith('#'):
+                            continue
+                        
+                        if instruction.startswith('WAIT '):
+                            time.sleep(float(instruction.split()[1]))
+                        elif instruction.startswith('WAIT_RANDOM '):
+                            min_max = instruction.split()[1].split('-')
+                            wait_time = random.uniform(float(min_max[0]), float(min_max[1]))
+                            time.sleep(wait_time)
+                        elif instruction.startswith('EXTRACT '):
+                            data = self.execute_command(instruction)
+                            if data:
+                                results.append(data)
+                                with open(output_file, 'w') as f:
+                                    json.dump(results, f, indent=2)
+                        elif instruction == 'MARK_COMPLETE':
+                            logging.info("Profile scraping completed successfully")
+                        
+                except Exception as e:
+                    logging.error(f"Error processing URL {url}: {e}")
+                    continue
+
+            return True
+
+        except Exception as e:
+            logging.error(f"Error in scrape_profiles: {e}")
+            return False
 
 # Example usage:
 if __name__ == "__main__":
