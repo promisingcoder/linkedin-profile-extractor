@@ -5,7 +5,7 @@ import logging
 import random
 import json
 import os
-import openai
+from openai import OpenAI
 from browser import Browser, HeadlessBrowser
 import re
 
@@ -290,7 +290,9 @@ class LinkedInProfileManager:
 
 class DorkGenerator:
     def __init__(self, api_key=None):
-        openai.api_key = api_key or os.getenv('OPENAI_API_KEY')
+        if api_key:
+            os.environ['OPENAI_API_KEY'] = api_key
+        self.client = OpenAI()
         
     def generate_dorks(self, query, profile_type="both"):
         """Generate search queries for finding LinkedIn profiles."""
@@ -313,28 +315,73 @@ class DorkGenerator:
         7. Include location terms when relevant
         
         Return the response in this exact JSON format:
-        [
-            {{"dork": "site:linkedin.com medical spa owner", "explanation": "This query finds..."}}
-        ]
-        ## you must also use site:linkedin.com/in/ for personal profiles  dork query
+        {{
+            "dorks": [
+                {{"dork": "site:linkedin.com medical spa owner", "explanation": "This query finds..."}}
+            ]
+        }}
+        ## you must also use site:linkedin.com/in/ for personal profiles dork query
         ## and also site:linkedin.com/company/ for company profiles dork query
         """
 
-        try:
-            completion = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": system_prompts[profile_type]},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7
-            )
-            
-            response_text = completion.choices[0].message['content'].strip()
-            return json.loads(response_text)
-        except Exception as e:
-            logging.error(f"Error generating dorks: {str(e)}")
-            return []
+        max_retries = 3
+        retry_delay = 1  # Start with 1 second delay
+
+        for attempt in range(max_retries):
+            try:
+                completion = self.client.chat.completions.create(
+                    model="gpt-4-turbo-preview",
+                    messages=[
+                        {"role": "system", "content": system_prompts[profile_type]},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=1000,
+                    response_format={ "type": "json_object" }
+                )
+                
+                response_text = completion.choices[0].message.content.strip()
+                
+                try:
+                    response_json = json.loads(response_text)
+                    
+                    # Handle both direct list and dictionary with "dorks" key
+                    if isinstance(response_json, dict) and "dorks" in response_json:
+                        dorks = response_json["dorks"]
+                    elif isinstance(response_json, list):
+                        dorks = response_json
+                    else:
+                        logging.error(f"Invalid response format. Expected list or dict with 'dorks' key, got {type(response_json)}")
+                        logging.debug(f"Response content: {response_text}")
+                        return []
+                    
+                    if not isinstance(dorks, list):
+                        logging.error(f"Invalid dorks format. Expected list, got {type(dorks)}")
+                        return []
+                        
+                    return dorks
+                    
+                except json.JSONDecodeError as e:
+                    logging.error(f"Error parsing JSON response: {str(e)}")
+                    logging.debug(f"Raw response: {response_text}")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                        continue
+                    return []
+                    
+            except Exception as e:
+                logging.error(f"Error generating dorks: {str(e)}")
+                if hasattr(e, 'response'):
+                    logging.debug(f"API Response: {e.response}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                    continue
+                return []
+
+        logging.error("Max retries reached while generating dorks")
+        return []
 
 class LinkedInProfileScraper:
     def __init__(self):

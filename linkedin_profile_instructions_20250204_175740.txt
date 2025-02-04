@@ -1,0 +1,18 @@
+# Fields to be extracted:
+# - Company
+# - Company website
+# - Full name
+# - LinkedIn profile URL
+# - Location
+# - Portfolio website
+# - Profile title
+
+FOR_EACH_URL linkedin_profile_urls.txt
+VISIT_URL
+WAIT 2
+EXTRACT {"Full name": "//h1[contains(@class,'inline t-24')]/text()", "Profile title": "//div[@class='text-body-medium break-words']/text()", "Location": "//div[@class='mt2 relative']/div/span[contains(@class,'text-body-small')]/text()", "Company": "//span[contains(@class,'hoverable-link-text')]/div/text()"}
+CLICK_ELEMENT_BY_SELECTOR //a[@id='top-card-text-details-contact-info']
+WAIT 3
+EXTRACT {"LinkedIn profile URL": "//a[contains(@href, 'linkedin.com/in')]/@href", "Portfolio website": "//a[contains(text(), '(Portfolio)')]/@href", "Company website": "//a[contains(text(), '(Company)')]/@href"}
+SAVE_TO output.json
+END_FOR

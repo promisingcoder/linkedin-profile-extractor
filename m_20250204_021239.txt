@@ -1,0 +1,35 @@
+# Web Scraping Instructions
+# Generated: 2025-02-04 02:12:39
+
+# Fields to be extracted:
+# - profile_link
+# - websites
+# - website_descriptions
+
+# Start looping through each URL provided.
+FOR_EACH_URL
+
+# Visit the current URL in the loop.
+VISIT_URL
+
+# Wait for 5 seconds to ensure the page has fully loaded.
+WAIT 5
+
+# Extract the LinkedIn profile link.
+EXTRACT {"profile_link": "//a[contains(@href, 'linkedin.com/in/')][@class='tcIDQGaeboaWlPNoKYorhbuQOoWgyCSLv link-without-visited-state t-14']"}
+
+# Extract all website URLs listed under Websites.
+EXTRACT {"websites": "//section[@class='pv-contact-info__contact-type'][h3/text()='Websites']//a[@class='pv-contact-info__contact-link link-without-visited-state']/@href"}
+
+# Extract descriptions for each website (e.g., Portfolio, Company).
+EXTRACT {"website_descriptions": "//section[@class='pv-contact-info__contact-type'][h3/text()='Websites']//span[@class='t-14 t-black--light t-normal']/text()"}
+
+# Save the extracted data to a JSON file named contact_info.json.
+SAVE_TO contact_info.json
+
+# End the loop through each URL.
+END_FOR
+
+# Mark the scraping task as complete.
+MARK_COMPLETE
+

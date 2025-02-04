@@ -1,0 +1,31 @@
+# Web Scraping Instructions
+# Generated: 2025-02-04 17:02:27
+
+# Fields to be extracted:
+# Visit the initial LinkedIn profile page.
+VISIT_URL
+
+# Wait for 3 seconds to ensure the page content is fully loaded.
+WAIT 3
+
+# Extract the full name, profile title, location, and current company from the profile.
+EXTRACT {"Full name":"//h1[contains(@class,'inline t-24')]",
+
+# Click on the 'Contact info' button to view contact details.
+CLICK_ELEMENT_BY_SELECTOR //a[@id='top-card-text-details-contact-info']
+
+# Wait for 2 seconds to ensure the contact info modal has opened.
+WAIT 2
+
+# Wait for the contact info dialog to be visible.
+WAIT_FOR //div[contains(@class,'artdeco-modal__content')]
+
+# Extract the LinkedIn profile URL, portfolio website, and company website from the contact info.
+EXTRACT {"LinkedIn profile URL":"//a[contains(@href,'linkedin.com/in/') and contains(@class,'link-without-visited-state')]",
+
+# Save the extracted data to a JSON file named LinkedInProfileData.json.
+SAVE_TO LinkedInProfileData.json
+
+# Mark the scraping task as complete.
+MARK_COMPLETE
+

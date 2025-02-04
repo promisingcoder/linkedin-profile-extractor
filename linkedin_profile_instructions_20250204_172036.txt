@@ -1,0 +1,36 @@
+# Web Scraping Instructions
+# Generated: 2025-02-04 17:20:36
+
+# Fields to be extracted:
+# - Company
+# - Company website
+# - Full name
+# - LinkedIn profile URL
+# - Location
+# - Portfolio website
+# - Profile title
+
+# Visit the initial LinkedIn profile page to start scraping.
+VISIT_URL
+
+# Wait for a random period to simulate human behavior.
+WAIT_RANDOM
+
+# Extract basic information from the profile page: Full name, Profile title, Location, and Company.
+EXTRACT {"Full name": "//h1[contains(@class,'inline') and contains(@class,'t-24')]", "Profile title": "//div[contains(@class,'text-body-medium') and contains(@class,'break-words')][1]", "Location": "//span[@class='text-body-small inline t-black--light break-words']", "Company": "//span[contains(@class,'hoverable-link-text')]/div"}
+
+# Click on the 'Contact info' button to view additional contact information.
+CLICK_ELEMENT_BY_SELECTOR {"selector": "//a[@id='top-card-text-details-contact-info']"}
+
+# Wait for the contact info modal to appear.
+WAIT_FOR {"selector": "//div[@class='artdeco-modal__content']"}
+
+# Extract LinkedIn profile URL, Portfolio website, and Company website from the contact info modal.
+EXTRACT {"LinkedIn profile URL": "//a[contains(@class,'link-without-visited-state') and contains(@href,'linkedin.com/in')]", "Portfolio website": "//a[contains(@href,'scaleai.biz/founder') and contains(@class,'pv-contact-info__contact-link')]", "Company website": "//a[contains(@href,'scaleai.biz') and contains(@class,'pv-contact-info__contact-link')][1]"}
+
+# Wait for a random period to simulate human behavior after extraction.
+WAIT_RANDOM
+
+# Mark the scraping process as complete.
+MARK_COMPLETE
+

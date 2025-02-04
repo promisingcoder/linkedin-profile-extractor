@@ -1,0 +1,33 @@
+# Web Scraping Instructions
+# Generated: 2025-02-04 02:04:55
+
+# Fields to be extracted:
+# - title
+# - summary
+# - author
+# - publication_date
+
+# Listing all fields to be extracted from the HTML.
+# Fields to be extracted: # - title (from main heading) # - summary (from description) # - author (from author section) # - publication_date (from publication date)
+
+# Loop through each URL in the specified text file.
+FOR_EACH_URL IN urls.txt
+
+# Wait for 5 seconds for the page to load completely.
+WAIT 5
+
+# Extract the main title from the heading and summary from the description.
+EXTRACT {"title": "//h1[@class='main-heading']", "summary": "//div[@class='summary']"}
+
+# Wait for 2 seconds to ensure all content is loaded.
+WAIT 2
+
+# Extract author information and publication date.
+EXTRACT {"author": "//span[@class='author-name']", "publication_date": "//span[@class='pub-date']"}
+
+# Save the extracted data to the JSON file.
+SAVE_TO output.json
+
+# End the URL iteration loop.
+END_FOR
+
