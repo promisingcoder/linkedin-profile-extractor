@@ -1,4 +1,12 @@
-requests
+fastapi
+uvicorn
+openai
 beautifulsoup4
-selenium
+requests
+python-dotenv
 undetected-chromedriver
+selenium
+pydantic
+tenacity
+python-multipart
+xvfbwrapper
