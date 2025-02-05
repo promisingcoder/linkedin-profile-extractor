@@ -3,3 +3,79 @@ __pycache__/
 *.csv
 *.png
 venv/
+
+# Chrome installation files
+*.deb
+google-chrome*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Chrome/Selenium files
+*.deb
+chromedriver
+chromedriver.exe
+*.crx
+*.xpi
+*.zip
+*.tar.gz
+*.tgz
+
+# Cookies and sensitive data
+cookies.txt
+*cookie*
+*auth*
+*credentials*
+*api_key*
+
+# Large data files
+*.csv
+*.json
+!requirements.json
+*.xml
+*.html
