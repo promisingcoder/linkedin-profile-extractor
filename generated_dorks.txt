@@ -1,15 +1,5 @@
-# This query finds personal LinkedIn profiles of individuals who own medical spas by searching for the exact phrase 'medical spa owner'.
-site:linkedin.com/in/ "medical spa owner"
-
-# This query targets LinkedIn profiles of CEOs within the medical spa industry by combining 'medical spa' with the CEO job title.
-site:linkedin.com/in/ "medical spa" CEO
-
-# This query searches for personal profiles of individuals who hold the title of director within medical spas, indicating a leadership or ownership role.
-site:linkedin.com/in/ "medical spa director"
-
-# This query is designed to find company profiles on LinkedIn for medical spas, allowing for exploration of potential business connections.
-site:linkedin.com/company/ "medical spa"
-
-# This query specifically seeks out medical spa owners who are also licensed estheticians in New York, combining role and location for a targeted search.
-site:linkedin.com/in/ "owner" "esthetician" location:"New York"
-
+site:linkedin.com/in/ "medical spa owner" OR "medspa owner"
+site:linkedin.com/in/ "aesthetic clinic owner" location:"New York"
+site:linkedin.com/in/ "cosmetic practice owner" "certified" -assistant
+site:linkedin.com/in/ AND "medical spa director" AND "Los Angeles"
+site:linkedin.com/in/ "owner" "medical aesthetics" "Botox" OR "fillers"

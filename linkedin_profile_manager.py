@@ -8,6 +8,7 @@ import os
 from openai import OpenAI
 from browser import Browser, HeadlessBrowser
 import re
+from linkedin_ai_agent import LinkedInAIAgent, ProfileType
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -22,7 +23,7 @@ class LinkedInProfileManager:
     def __init__(self, api_key=None):
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         self.scraper = LinkedInProfileScraper()
-        self.dork_generator = DorkGenerator(api_key=self.api_key)
+        self.ai_agent = LinkedInAIAgent(api_key=self.api_key)
         self.browser = None
         
         # Initialize separate sets for different profile types
@@ -59,7 +60,19 @@ class LinkedInProfileManager:
         return url
 
     def search_profiles(self, query):
-        """Search for LinkedIn profiles using searx.ro."""
+        """Search for LinkedIn profiles using multiple search engines with fallback."""
+        # List of search engines to try, ordered by reliability and speed
+        search_engines = [
+            'https://searx.be/search',
+            'https://search.inetol.net/search',
+            'https://priv.au/search',
+            'https://northboot.xyz/search',
+            'https://searx.rhscz.eu/search',
+            'https://search.ononoki.org/search',
+            'https://search.sapti.me/search',
+            'https://www.gruble.de/search'
+        ]
+
         headers = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'Accept-Language': 'en-US,en;q=0.9',
@@ -87,50 +100,90 @@ class LinkedInProfileManager:
             'theme': 'simple'
         }
 
-        try:
-            response = requests.post('https://searx.ro/search', headers=headers, data=data)
-            if response.status_code == 200:
-                # Parse the response and extract LinkedIn URLs
-                soup = BeautifulSoup(response.text, 'html.parser')
-                results = soup.find_all('a', href=True)
+        for search_engine in search_engines:
+            try:
+                logging.info(f"Trying search engine: {search_engine}")
+                response = requests.post(search_engine, headers=headers, data=data, timeout=30)
                 
-                for result in results:
-                    url = result['href']
-                    # Clean the URL before processing
-                    cleaned_url = self.clean_url(url)
+                if response.status_code == 200:
+                    # Parse the response and extract LinkedIn URLs
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    results = soup.find_all('a', href=True)
                     
-                    if 'linkedin.com/in/' in cleaned_url:
-                        self.personal_profiles.add(cleaned_url)
-                    elif 'linkedin.com/company/' in cleaned_url:
-                        self.company_profiles.add(cleaned_url)
+                    found_new_profiles = False
+                    initial_personal_count = len(self.personal_profiles)
+                    initial_company_count = len(self.company_profiles)
+                    
+                    for result in results:
+                        url = result['href']
+                        # Clean the URL before checking and storing
+                        cleaned_url = self.clean_url(url)
+                        
+                        # Only process URLs that don't contain web.archive.org
+                        if cleaned_url and 'web.archive.org' not in cleaned_url:
+                            if 'linkedin.com/in/' in cleaned_url:
+                                self.personal_profiles.add(cleaned_url)
+                            elif 'linkedin.com/company/' in cleaned_url:
+                                self.company_profiles.add(cleaned_url)
+                    
+                    # Check if we found any new profiles
+                    new_personal = len(self.personal_profiles) - initial_personal_count
+                    new_company = len(self.company_profiles) - initial_company_count
+                    
+                    if new_personal > 0 or new_company > 0:
+                        found_new_profiles = True
+                        logging.info(f"Found {new_personal} new personal profiles and {new_company} new company profiles from {search_engine}")
+                    
+                    # If we found profiles, we can stop trying other engines
+                    if found_new_profiles:
+                        break
+                    else:
+                        logging.info(f"No new profiles found from {search_engine}, trying next engine...")
                 
-                logging.info(f"Found {len(self.personal_profiles)} personal profiles and {len(self.company_profiles)} company profiles")
-            else:
-                logging.error(f"Search request failed with status code: {response.status_code}")
-        
-        except Exception as e:
-            logging.error(f"Error during search: {str(e)}")
+                else:
+                    logging.warning(f"Search request failed for {search_engine} with status code: {response.status_code}")
+                    continue
+                
+            except requests.exceptions.RequestException as e:
+                logging.warning(f"Error with search engine {search_engine}: {str(e)}")
+                continue
+            except Exception as e:
+                logging.error(f"Unexpected error with search engine {search_engine}: {str(e)}")
+                continue
+
+        # Final count of all profiles found
+        logging.info(f"Total profiles found: {len(self.personal_profiles)} personal profiles and {len(self.company_profiles)} company profiles")
 
     def process_profiles(self, query, profile_type="both"):
         """Main method to process LinkedIn profiles"""
-        # Generate search queries
-        logging.info(f"Generating search queries for: {query}")
-        dorks = self.dork_generator.generate_dorks(query, profile_type)
+        # Set up AI agent
+        self.ai_agent.set_query(query)
         
-        if not dorks:
-            logging.error("No search queries were generated")
-            return False
-
-        # Save generated dorks
+        if profile_type == "both":
+            # Handle both profile types
+            self.ai_agent.set_profile_type(ProfileType.PERSONAL)
+            personal_results = self.ai_agent.generate_search_queries()
+            
+            self.ai_agent.set_profile_type(ProfileType.COMPANY)
+            company_results = self.ai_agent.generate_search_queries()
+            
+            # Combine queries
+            all_queries = personal_results['queries'] + company_results['queries']
+        else:
+            # Handle single profile type
+            self.ai_agent.set_profile_type(profile_type)
+            results = self.ai_agent.generate_search_queries()
+            all_queries = results['queries']
+        
+        # Save generated queries
         with open("generated_dorks.txt", 'w') as f:
-            for dork in dorks:
-                f.write(f"# {dork.get('explanation', 'No explanation provided')}\n")
-                f.write(f"{dork.get('dork', '')}\n\n")
+            for query in all_queries:
+                f.write(f"{query}\n")
 
-        # Search for profiles using each dork
-        for dork in dorks:
-            logging.info(f"Processing search query: {dork['dork']}")
-            self.search_profiles(dork['dork'])
+        # Search for profiles using each query
+        for query in all_queries:
+            logging.info(f"Processing search query: {query}")
+            self.search_profiles(query)
             # Add random delay between searches
             time.sleep(random.uniform(2, 5))
 

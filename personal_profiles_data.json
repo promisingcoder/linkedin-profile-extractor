@@ -1,123 +1,38 @@
-[
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  },
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  },
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  },
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  },
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  },
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  },
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  },
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  },
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  },
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  },
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  },
-  {
-    "name": null,
-    "headline": null,
-    "about": null,
-    "linkedin_url": null,
-    "websites": null,
-    "phone": null,
-    "email": null,
-    "birthday": null
-  }
-]{"name": "Ardis Schmitt", "headline": "CEO at Revive Medical Spa", "about": null, "linkedin_url": "https://www.linkedin.com/in/ardis-schmitt-9ab54b14a", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Ardis Schmitt", "headline": "CEO at Revive Medical Spa", "about": null, "linkedin_url": "https://www.linkedin.com/in/ardis-schmitt-9ab54b14a", "websites": null, "phone": null, "email": null, "birthday": null}
 {"name": "Amanda Bozek", "headline": "Medical Spa Owner", "about": null, "linkedin_url": "https://www.linkedin.com/in/amanda-bozek-37a7a718a", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": null, "headline": null, "about": null, "linkedin_url": null, "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": null, "headline": null, "about": null, "linkedin_url": null, "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Nassim Aboufaraj", "headline": "Veterinary Dental Hygienist at veterinary dental support services", "about": null, "linkedin_url": "https://www.linkedin.com/in/nassim-aboufaraj-08844b34", "websites": ["https://www.linkedin.com/in/nassim-aboufaraj-08844b34", "http://origamienterprises.com/", "http://origamienterprises.net/"], "phone": null, "email": null, "birthday": null}
+{"name": null, "headline": null, "about": null, "linkedin_url": null, "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Skyler Pearson", "headline": "Owner of med spa and USA and Canada aesthetics machines distributor", "about": null, "linkedin_url": "https://www.linkedin.com/in/skyler-pearson-84aa48178", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Stacey Francois", "headline": "Medical Spa Owner & Founder at Body Tonic Med Spa", "about": null, "linkedin_url": "https://www.linkedin.com/in/stacey-francois-59b5a9329", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Michelle Lucero", "headline": "Monat", "about": null, "linkedin_url": "https://www.linkedin.com/in/michelle-lucero-abb060135", "websites": ["https://www.linkedin.com/in/michelle-lucero-abb060135", "http://bellaandgraciesorelle.com/", "https://twitter.com/MrsLuceroRead", "https://sorellemodel.my.canva.site/?fbclid=IwAR04JTDtbUqjdPE4C08KYY1QX3gDvKysBgL2cWhIyO_-khNnvMIHR4dEdLE", "https://www.linkedin.com/premium/products/?upsellOrderOrigin=profile_contact_info_upsell&premiumFeatureType=INMAIL&referenceId=CLjMxSjBRu6a%2BzeuHs8RiQ%3D%3D&destRedirectURL=https%3A%2F%2Fwww.linkedin.com%2Fin%2Fmichelle-lucero-abb060135%2Foverlay%2Fcontact-info%2F"], "phone": null, "email": null, "birthday": null}
+{"name": "Molly Rodriguez, RN, MPH, Trainer", "headline": "Aesthetic Nurse, Medical Aesthetic Clinic Owner, Aesthetic Trainer", "about": null, "linkedin_url": "https://www.linkedin.com/in/molly-rodriguez-rn-mph-trainer-841b064b", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Lauren Kleban", "headline": "Founder and CEO at LEKFIT", "about": null, "linkedin_url": "https://www.linkedin.com/in/lauren-kleban-0a6176118", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": null, "headline": null, "about": null, "linkedin_url": null, "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": null, "headline": null, "about": null, "linkedin_url": null, "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Jessica Polanco", "headline": "Merchant Banking Agent / Talent Manager / Social Media Expert / Healthcare Development Senior Citizen Sector / Model", "about": null, "linkedin_url": "https://www.linkedin.com/in/jessicapolanco1", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": null, "headline": null, "about": null, "linkedin_url": null, "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": null, "headline": null, "about": null, "linkedin_url": null, "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Daniel Lee", "headline": "Owner and Surgeon- New Life Cosmetic Surgery and Wellness Center", "about": null, "linkedin_url": "https://www.linkedin.com/in/daniel-lee-3b371a57", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Dr. David Amron", "headline": "Co-owner at Spalding Cosmetic Surgery and Dermatology", "about": null, "linkedin_url": "https://www.linkedin.com/in/drdavidamron", "websites": ["https://www.linkedin.com/in/drdavidamron", "http://www.drdavidamron.com/", "http://www.spaldingplasticsurgery.com/doctors_amron.htm", "https://www.linkedin.com/premium/products/?upsellOrderOrigin=profile_contact_info_upsell&premiumFeatureType=INMAIL&referenceId=aujiZYYyQ82WHRz1CXO8Kw%3D%3D&destRedirectURL=https%3A%2F%2Fwww.linkedin.com%2Fin%2Fdrdavidamron%2Foverlay%2Fcontact-info%2F"], "phone": null, "email": null, "birthday": null}
+{"name": "Melissa Pierzchajlo", "headline": "Sol\u00e9 Medical Spa Owner", "about": null, "linkedin_url": "https://www.linkedin.com/in/melissa-pierzchajlo", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Peter A. Vitull", "headline": "Owner, A Center for Dermatology, Cosmetic and Laser Surgery", "about": null, "linkedin_url": "https://www.linkedin.com/in/peter-a-vitull-5a73493b", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Dr. Leslie Gerstman", "headline": "owner at Medical Aesthetics", "about": null, "linkedin_url": "https://www.linkedin.com/in/dr-leslie-gerstman-3b0a0314", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Ashley Spiller", "headline": "Medical Spa Owner at SlimRU Wellness & Aesthetics", "about": null, "linkedin_url": "https://www.linkedin.com/in/ashley-spiller-b12753230", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Gio De La Cruz", "headline": "Helping plastic surgeons optimize their practice for success \ud83d\udcb0 Watch The Real #1 Secret, How I Took A Plastic Surgery Clinic Hit 7 Figures A Month \ud83d\udc49 giodelacruz.com", "about": null, "linkedin_url": "https://www.linkedin.com/in/realgiodelacruz", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Carin Gustavson", "headline": "Expertise in medical aesthetics, comprehensive knowledge of beauty treatments, and 25+ years of makeup artistry", "about": null, "linkedin_url": null, "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Brian Esper", "headline": "Entrepreneurial Visionary | Founder of HYER Studios | Guiding Businesses to Success in Consulting, Branding & Digital Solutions", "about": null, "linkedin_url": null, "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Moises (MOI) Andrade", "headline": "COO at Balloon and Paper", "about": null, "linkedin_url": null, "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Dimple Patel", "headline": "Head of the Glow Aesthetic, Medical & Dermatology Clinic", "about": null, "linkedin_url": "https://www.linkedin.com/in/dimple-patel-uae", "websites": ["https://www.linkedin.com/in/dimple-patel-uae", "https://glowdubai.ae/", "https://www.linkedin.com/premium/products/?upsellOrderOrigin=profile_contact_info_upsell&premiumFeatureType=INMAIL&referenceId=%2F%2B7vuLMNQvmSZZzAN20rLg%3D%3D&destRedirectURL=https%3A%2F%2Fwww.linkedin.com%2Fin%2Fdimple-patel-uae%2Foverlay%2Fcontact-info%2F"], "phone": null, "email": null, "birthday": null}
+{"name": "Erin Biel", "headline": "Surgical physician assistant; Aesthetic Medicine", "about": null, "linkedin_url": "https://www.linkedin.com/in/erin-biel-6b833b42", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Jennifer Morris", "headline": "Medical spa owner at Rejuvenate Medical Spa and Laser", "about": null, "linkedin_url": "https://www.linkedin.com/in/jennifer-morris-060b3215b", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Craig Perman", "headline": "Founder Manhattan Aesthetics", "about": null, "linkedin_url": "https://www.linkedin.com/in/craig-perman-392815101", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Dr. Fred Suess", "headline": "Owner & Board Certified Plastic Surgeon at Aesthetic Enhancement Clinic", "about": null, "linkedin_url": "https://www.linkedin.com/in/dr-fred-suess-01683311b", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": null, "headline": null, "about": null, "linkedin_url": null, "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Aleksandr Benji", "headline": "Founder and Medical Director at Aesthetic Solutions NY", "about": null, "linkedin_url": "https://www.linkedin.com/in/aleksandr-benji-bb649125", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Robert Gleason", "headline": "10+ Years Experience in CoolSculpting", "about": null, "linkedin_url": "https://www.linkedin.com/in/robert-gleason-56291a17", "websites": ["https://www.linkedin.com/in/robert-gleason-56291a17", "http://roydavidmd.com/", "https://www.linkedin.com/premium/products/?upsellOrderOrigin=profile_contact_info_upsell&premiumFeatureType=INMAIL&referenceId=piYBTiamS%2BOMZCjkF942wg%3D%3D&destRedirectURL=https%3A%2F%2Fwww.linkedin.com%2Fin%2Frobert-gleason-56291a17%2Foverlay%2Fcontact-info%2F"], "phone": null, "email": null, "birthday": null}
+{"name": "Esther Penn, M.D.", "headline": "Owner, Medical Aesthetics, Esther Penn, M.D.", "about": null, "linkedin_url": "https://www.linkedin.com/in/esther-penn-m-d-59ab6932", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Ga\u00eblle Pereira Benchetrit", "headline": "Founder of Clinique des champs Elys\u00e9es New York", "about": null, "linkedin_url": "https://www.linkedin.com/in/ga%C3%ABlle-pereira-benchetrit-208622226", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Houston Medspa", "headline": "Owner, Houston Med Spa", "about": null, "linkedin_url": "https://www.linkedin.com/in/houston-medspa-68b53228", "websites": null, "phone": null, "email": null, "birthday": null}
+{"name": "Dr. Mary Berry", "headline": "Director Anaheim Hills Wellness Center and Medical Spa. Director of Elite Personalized Medicine (Concierge medicine)", "about": null, "linkedin_url": "https://www.linkedin.com/in/dr-mary-berry-1434b98", "websites": null, "phone": null, "email": null, "birthday": null}
