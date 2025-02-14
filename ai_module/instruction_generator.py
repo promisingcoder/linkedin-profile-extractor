@@ -7,6 +7,11 @@ import logging
 import time
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 
+# Constants
+INSTRUCTIONS_DIR = "instructions"
+if not os.path.exists(INSTRUCTIONS_DIR):
+    os.makedirs(INSTRUCTIONS_DIR)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -196,7 +201,8 @@ class InstructionGenerator:
         """Save the instructions to a file."""
         try:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
-            filename = f"{output_file}_{timestamp}.txt"
+            # Ensure output file is in the instructions directory
+            filename = os.path.join(INSTRUCTIONS_DIR, f"{output_file}_{timestamp}.txt")
 
             with open(filename, 'w') as f:
                 # Write fields to be extracted as comments at the top

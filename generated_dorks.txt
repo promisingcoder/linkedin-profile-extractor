@@ -1,5 +1,5 @@
-site:linkedin.com/in/ "medical spa owner" OR "medspa owner"
-site:linkedin.com/in/ "aesthetic clinic owner" location:"New York"
-site:linkedin.com/in/ "cosmetic practice owner" "certified" -assistant
-site:linkedin.com/in/ AND "medical spa director" AND "Los Angeles"
-site:linkedin.com/in/ "owner" "medical aesthetics" "Botox" OR "fillers"
+site:linkedin.com/in/ AND "medical spa owner" AND "aesthetic medicine"
+site:linkedin.com/in/ AND "med spa owner" location:"New York"
+site:linkedin.com/in/ AND "medical spa director" AND "cosmetic procedures"
+site:linkedin.com/in/ AND "owner" AND "laser clinic" OR "skin care clinic"
+site:linkedin.com/in/ AND "medical spa" AND "business owner" AND certification:"licensed esthetician"

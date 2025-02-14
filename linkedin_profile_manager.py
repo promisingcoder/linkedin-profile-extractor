@@ -6,13 +6,39 @@ import random
 import json
 import os
 from openai import OpenAI
-from browser import Browser, HeadlessBrowser
+from browser_module.browser import Browser, HeadlessBrowser
 import re
-from linkedin_ai_agent import LinkedInAIAgent, ProfileType
+from ai_module.linkedin_ai_agent import LinkedInAIAgent, ProfileType
+from search_module.integrated_linkedin_scraper import LinkedInProfileScraper
+from search_module.searxng_search import SearxNGSearch
+from ai_module.dork_generator import DorkGenerator
 
+# Constants for directories
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+PROFILES_DIR = os.path.join(DATA_DIR, "profiles")
+QUERIES_DIR = os.path.join(DATA_DIR, "queries")
+LOGS_DIR = os.path.join(DATA_DIR, "logs")
+COOKIES_DIR = os.path.join(DATA_DIR, "cookies")
+INSTRUCTIONS_DIR = os.path.join(BASE_DIR, "instructions")
+
+# Create directories if they don't exist
+for directory in [DATA_DIR, PROFILES_DIR, QUERIES_DIR, LOGS_DIR, COOKIES_DIR, INSTRUCTIONS_DIR]:
+    os.makedirs(directory, exist_ok=True)
+
+# Constants for files
+COOKIES_FILE = os.path.join(COOKIES_DIR, "cookies.txt")
+PERSONAL_INSTRUCTIONS_FILE = os.path.join(INSTRUCTIONS_DIR, "linkedin_profile_instructions.txt")
+COMPANY_INSTRUCTIONS_FILE = os.path.join(INSTRUCTIONS_DIR, "company_profile_instructions.txt")
+
+# Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(LOGS_DIR, f'linkedin_scraper_{time.strftime("%Y%m%d_%H%M%S")}.log')),
+        logging.StreamHandler()
+    ]
 )
 
 class ProfileType:
@@ -24,6 +50,7 @@ class LinkedInProfileManager:
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         self.scraper = LinkedInProfileScraper()
         self.ai_agent = LinkedInAIAgent(api_key=self.api_key)
+        self.searx_search = SearxNGSearch()
         self.browser = None
         
         # Initialize separate sets for different profile types
@@ -36,123 +63,12 @@ class LinkedInProfileManager:
         """Initialize the browser and load cookies"""
         try:
             self.browser = Browser()
-            self.browser.load_cookies_from_file("cookies.txt")
+            self.browser.load_cookies_from_file(COOKIES_FILE)
             logging.info("Successfully initialized browser and loaded cookies")
             return True
         except Exception as e:
             logging.error(f"Error initializing browser: {e}")
             return False
-
-    def clean_url(self, url):
-        """Remove web.archive.org prefix from URLs."""
-        if not url:
-            return url
-        
-        # Pattern to match web.archive.org URLs
-        pattern = r'https?://(?:www\.)?web\.archive\.org/web/\d*/(?:https?://)?(.+)'
-        match = re.match(pattern, url)
-        if match:
-            cleaned_url = match.group(1)
-            # Ensure the URL starts with https://
-            if not cleaned_url.startswith('http'):
-                cleaned_url = 'https://' + cleaned_url
-            return cleaned_url
-        return url
-
-    def search_profiles(self, query):
-        """Search for LinkedIn profiles using multiple search engines with fallback."""
-        # List of search engines to try, ordered by reliability and speed
-        search_engines = [
-            'https://searx.be/search',
-            'https://search.inetol.net/search',
-            'https://priv.au/search',
-            'https://northboot.xyz/search',
-            'https://searx.rhscz.eu/search',
-            'https://search.ononoki.org/search',
-            'https://search.sapti.me/search',
-            'https://www.gruble.de/search'
-        ]
-
-        headers = {
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Cache-Control': 'max-age=0',
-            'Connection': 'keep-alive',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Origin': 'null',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-User': '?1',
-            'Upgrade-Insecure-Requests': '1',
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
-            'sec-ch-ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Linux"'
-        }
-
-        data = {
-            'q': query,
-            'category_general': '1',
-            'language': 'auto',
-            'time_range': '',
-            'safesearch': '0',
-            'theme': 'simple'
-        }
-
-        for search_engine in search_engines:
-            try:
-                logging.info(f"Trying search engine: {search_engine}")
-                response = requests.post(search_engine, headers=headers, data=data, timeout=30)
-                
-                if response.status_code == 200:
-                    # Parse the response and extract LinkedIn URLs
-                    soup = BeautifulSoup(response.text, 'html.parser')
-                    results = soup.find_all('a', href=True)
-                    
-                    found_new_profiles = False
-                    initial_personal_count = len(self.personal_profiles)
-                    initial_company_count = len(self.company_profiles)
-                    
-                    for result in results:
-                        url = result['href']
-                        # Clean the URL before checking and storing
-                        cleaned_url = self.clean_url(url)
-                        
-                        # Only process URLs that don't contain web.archive.org
-                        if cleaned_url and 'web.archive.org' not in cleaned_url:
-                            if 'linkedin.com/in/' in cleaned_url:
-                                self.personal_profiles.add(cleaned_url)
-                            elif 'linkedin.com/company/' in cleaned_url:
-                                self.company_profiles.add(cleaned_url)
-                    
-                    # Check if we found any new profiles
-                    new_personal = len(self.personal_profiles) - initial_personal_count
-                    new_company = len(self.company_profiles) - initial_company_count
-                    
-                    if new_personal > 0 or new_company > 0:
-                        found_new_profiles = True
-                        logging.info(f"Found {new_personal} new personal profiles and {new_company} new company profiles from {search_engine}")
-                    
-                    # If we found profiles, we can stop trying other engines
-                    if found_new_profiles:
-                        break
-                    else:
-                        logging.info(f"No new profiles found from {search_engine}, trying next engine...")
-                
-                else:
-                    logging.warning(f"Search request failed for {search_engine} with status code: {response.status_code}")
-                    continue
-                
-            except requests.exceptions.RequestException as e:
-                logging.warning(f"Error with search engine {search_engine}: {str(e)}")
-                continue
-            except Exception as e:
-                logging.error(f"Unexpected error with search engine {search_engine}: {str(e)}")
-                continue
-
-        # Final count of all profiles found
-        logging.info(f"Total profiles found: {len(self.personal_profiles)} personal profiles and {len(self.company_profiles)} company profiles")
 
     def process_profiles(self, query, profile_type="both"):
         """Main method to process LinkedIn profiles"""
@@ -176,14 +92,17 @@ class LinkedInProfileManager:
             all_queries = results['queries']
         
         # Save generated queries
-        with open("generated_dorks.txt", 'w') as f:
+        queries_file = os.path.join(QUERIES_DIR, f'generated_dorks_{time.strftime("%Y%m%d_%H%M%S")}.txt')
+        with open(queries_file, 'w') as f:
             for query in all_queries:
                 f.write(f"{query}\n")
 
         # Search for profiles using each query
         for query in all_queries:
             logging.info(f"Processing search query: {query}")
-            self.search_profiles(query)
+            personal_results, company_results = self.searx_search.search_profiles(query)
+            self.personal_profiles.update(personal_results)
+            self.company_profiles.update(company_results)
             # Add random delay between searches
             time.sleep(random.uniform(2, 5))
 
@@ -197,17 +116,21 @@ class LinkedInProfileManager:
 
     def save_categorized_profiles(self):
         """Save personal and company profiles to separate files"""
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        
         if self.personal_profiles:
-            with open("personal_profiles.txt", 'w') as f:
+            personal_file = os.path.join(PROFILES_DIR, f'personal_profiles_{timestamp}.txt')
+            with open(personal_file, 'w') as f:
                 for profile in self.personal_profiles:
                     f.write(f"{profile}\n")
-            logging.info(f"Saved {len(self.personal_profiles)} personal profiles")
+            logging.info(f"Saved {len(self.personal_profiles)} personal profiles to {personal_file}")
 
         if self.company_profiles:
-            with open("company_profiles.txt", 'w') as f:
+            company_file = os.path.join(PROFILES_DIR, f'company_profiles_{timestamp}.txt')
+            with open(company_file, 'w') as f:
                 for profile in self.company_profiles:
                     f.write(f"{profile}\n")
-            logging.info(f"Saved {len(self.company_profiles)} company profiles")
+            logging.info(f"Saved {len(self.company_profiles)} company profiles to {company_file}")
 
     def process_with_instructions(self):
         """Process profiles with appropriate instructions"""
@@ -217,25 +140,32 @@ class LinkedInProfileManager:
                 if not self.initialize_browser():
                     return False
 
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            current_batch_file = os.path.join(PROFILES_DIR, "current_batch_profiles.txt")
+
             # Process personal profiles
             if self.personal_profiles:
                 # Create a batch file for processing
-                with open("current_batch_profiles.txt", 'w') as f:
+                with open(current_batch_file, 'w') as f:
                     for profile in self.personal_profiles:
                         f.write(f"{profile}\n")
                 
                 # Execute personal profile instructions
-                self.browser.execute_instructions("linkedin_profile_instructions.txt")
+                self.browser.execute_instructions(PERSONAL_INSTRUCTIONS_FILE)
                 
             # Process company profiles
             if self.company_profiles:
                 # Create a batch file for processing
-                with open("current_batch_profiles.txt", 'w') as f:
+                with open(current_batch_file, 'w') as f:
                     for profile in self.company_profiles:
                         f.write(f"{profile}\n")
                 
                 # Execute company profile instructions
-                self.browser.execute_instructions("company_profile_instructions.txt")
+                self.browser.execute_instructions(COMPANY_INSTRUCTIONS_FILE)
+
+            # Clean up temporary batch file
+            if os.path.exists(current_batch_file):
+                os.remove(current_batch_file)
 
             return True
             
@@ -250,17 +180,17 @@ class LinkedInProfileManager:
 
     def _save_unprocessed_profiles(self):
         """Save any unprocessed profiles in case of errors"""
-        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
         
         if self.personal_profiles:
-            filename = f"unprocessed_personal_profiles_{timestamp}.txt"
+            filename = os.path.join(PROFILES_DIR, f'unprocessed_personal_profiles_{timestamp}.txt')
             with open(filename, 'w') as f:
                 for profile in self.personal_profiles:
                     f.write(f"{profile}\n")
             logging.info(f"Saved unprocessed personal profiles to {filename}")
             
         if self.company_profiles:
-            filename = f"unprocessed_company_profiles_{timestamp}.txt"
+            filename = os.path.join(PROFILES_DIR, f'unprocessed_company_profiles_{timestamp}.txt')
             with open(filename, 'w') as f:
                 for profile in self.company_profiles:
                     f.write(f"{profile}\n")
@@ -310,11 +240,14 @@ class LinkedInProfileManager:
     def save_profiles(self, output_file):
         """Save cleaned profiles by appending to a JSON file, avoiding duplicates."""
         try:
+            # Ensure output file is in the profiles directory
+            output_path = os.path.join(PROFILES_DIR, output_file)
+            
             # Load existing profiles to check for duplicates
-            existing_profiles = self.load_existing_profiles(output_file)
+            existing_profiles = self.load_existing_profiles(output_path)
             
             # Open file in append mode
-            with open(output_file, 'a') as f:
+            with open(output_path, 'a') as f:
                 for profile in self.profiles:
                     # Skip if this profile is a duplicate
                     if not self.is_duplicate_profile(profile, existing_profiles):
@@ -323,255 +256,9 @@ class LinkedInProfileManager:
                         # Add to existing profiles to check against remaining profiles
                         existing_profiles.append(profile)
             
-            logging.info(f"Profiles appended to: {output_file}")
+            logging.info(f"Profiles appended to: {output_path}")
         except Exception as e:
             logging.error(f"Error saving profiles: {e}")
-
-    def clean_profile_urls(self):
-        """Clean web.archive.org URLs from all profiles."""
-        for profile in self.profiles:
-            # Clean linkedin_url
-            if 'linkedin_url' in profile:
-                profile['linkedin_url'] = self.clean_url(profile['linkedin_url'])
-            
-            # Clean websites (could be a list or single URL)
-            if 'websites' in profile:
-                if isinstance(profile['websites'], list):
-                    profile['websites'] = [self.clean_url(url) for url in profile['websites']]
-                elif profile['websites']:
-                    profile['websites'] = self.clean_url(profile['websites'])
-
-class DorkGenerator:
-    def __init__(self, api_key=None):
-        if api_key:
-            os.environ['OPENAI_API_KEY'] = api_key
-        self.client = OpenAI()
-        
-    def generate_dorks(self, query, profile_type="both"):
-        """Generate search queries for finding LinkedIn profiles."""
-        system_prompts = {
-            "company": "You are a search dork generator specialized in finding LinkedIn company profiles.",
-            "personal": "You are a search dork generator specialized in finding LinkedIn personal profiles.",
-            "both": "You are a search dork generator specialized in finding both LinkedIn personal and company profiles."
-        }
-        
-        prompt = f"""
-        Generate 5 simple but effective search queries to find LinkedIn profiles related to: {query}
-
-        Rules for the queries:
-        1. Use simple terms that would appear in profiles
-        2. Include 'site:linkedin.com' at the start
-        3. For companies, include 'company' in the query
-        4. For personal profiles, include relevant job titles
-
-        6. Use quotes only for exact phrases
-        7. Include location terms when relevant
-        
-        Return the response in this exact JSON format:
-        {{
-            "dorks": [
-                {{"dork": "site:linkedin.com medical spa owner", "explanation": "This query finds..."}}
-            ]
-        }}
-        ## you must also use site:linkedin.com/in/ for personal profiles dork query
-        ## and also site:linkedin.com/company/ for company profiles dork query
-        """
-
-        max_retries = 3
-        retry_delay = 1  # Start with 1 second delay
-
-        for attempt in range(max_retries):
-            try:
-                completion = self.client.chat.completions.create(
-                    model="gpt-4-turbo-preview",
-                    messages=[
-                        {"role": "system", "content": system_prompts[profile_type]},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=1000,
-                    response_format={ "type": "json_object" }
-                )
-                
-                response_text = completion.choices[0].message.content.strip()
-                
-                try:
-                    response_json = json.loads(response_text)
-                    
-                    # Handle both direct list and dictionary with "dorks" key
-                    if isinstance(response_json, dict) and "dorks" in response_json:
-                        dorks = response_json["dorks"]
-                    elif isinstance(response_json, list):
-                        dorks = response_json
-                    else:
-                        logging.error(f"Invalid response format. Expected list or dict with 'dorks' key, got {type(response_json)}")
-                        logging.debug(f"Response content: {response_text}")
-                        return []
-                    
-                    if not isinstance(dorks, list):
-                        logging.error(f"Invalid dorks format. Expected list, got {type(dorks)}")
-                        return []
-                        
-                    return dorks
-                    
-                except json.JSONDecodeError as e:
-                    logging.error(f"Error parsing JSON response: {str(e)}")
-                    logging.debug(f"Raw response: {response_text}")
-                    if attempt < max_retries - 1:
-                        time.sleep(retry_delay)
-                        retry_delay *= 2  # Exponential backoff
-                        continue
-                    return []
-                    
-            except Exception as e:
-                logging.error(f"Error generating dorks: {str(e)}")
-                if hasattr(e, 'response'):
-                    logging.debug(f"API Response: {e.response}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
-                    continue
-                return []
-
-        logging.error("Max retries reached while generating dorks")
-        return []
-
-class LinkedInProfileScraper:
-    def __init__(self):
-        self.url = "https://search.hbubli.cc/search"  # Updated search endpoint
-        self.headers = {
-            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'accept-language': 'en-US,en;q=0.9',
-            'cache-control': 'max-age=0',
-            'content-type': 'application/x-www-form-urlencoded',
-            'origin': 'null',
-            'priority': 'u=0, i',
-            'sec-ch-ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Linux"',
-            'sec-fetch-dest': 'document',
-            'sec-fetch-mode': 'navigate',
-            'sec-fetch-site': 'same-origin',
-            'sec-fetch-user': '?1',
-            'upgrade-insecure-requests': '1',
-            'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36'
-        }
-        self.session = requests.Session()
-
-    def search(self, query, pageno):
-        """Search for LinkedIn profiles using the provided query."""
-        logging.debug(f'Searching for query "{query}" on page {pageno}')
-
-        # Format data exactly as in the curl request
-        data_raw = f'q={query}&category_general=1&language=en&time_range=&safesearch=0&theme=simple'
-        if pageno > 1:
-            data_raw += f'&pageno={pageno}'
-
-        try:
-            # Add retry mechanism
-            max_retries = 3
-            retry_count = 0
-            while retry_count < max_retries:
-                try:
-                    response = self.session.post(
-                        self.url,
-                        headers=self.headers,
-                        data=data_raw,
-                        timeout=30,
-                        allow_redirects=True
-                    )
-                    
-                    if response.status_code == 200:
-                        break
-                    
-                    retry_count += 1
-                    if response.status_code == 429:  # Rate limit
-                        wait_time = random.uniform(30, 60)
-                        logging.warning(f"Rate limit hit, waiting {wait_time:.2f} seconds")
-                        time.sleep(wait_time)
-                    else:
-                        time.sleep(random.uniform(5, 10))
-                        
-                except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
-                    retry_count += 1
-                    if retry_count == max_retries:
-                        raise e
-                    time.sleep(random.uniform(5, 10))
-
-            if response.status_code != 200:
-                logging.error(f'Received non-200 HTTP status code: {response.status_code}')
-                return set()
-
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Look for results in both standard links and result titles
-            links = soup.find_all("a", href=True)
-            
-            # Filter for LinkedIn profile URLs and clean them
-            profile_links = set()
-            for link in links:
-                href = link.get("href", "").strip()
-                if href and "linkedin.com" in href:
-                    # Clean the URL to remove tracking parameters
-                    cleaned_url = href.split('?')[0].split('#')[0]
-                    # Ensure it's a profile URL and not a general LinkedIn page
-                    if ('/in/' in cleaned_url or '/company/' in cleaned_url) and not any(x in cleaned_url for x in ['/pub/', '/jobs/', '/feed/', '/posts/']):
-                        profile_links.add(cleaned_url)
-            
-            logging.debug(f'Found {len(profile_links)} LinkedIn profile links')
-            return profile_links
-
-        except requests.exceptions.Timeout:
-            logging.error("Request timed out")
-            time.sleep(random.uniform(10, 20))
-            return set()
-        except Exception as e:
-            logging.error(f'Search error: {str(e)}')
-            return set()
-
-    def scrape_profiles(self, dork, max_pages=1):
-        """Scrape LinkedIn profiles using the provided dork."""
-        results = set()
-        page = 1
-        empty_pages = 0
-        max_empty_pages = 2  # Stop after 2 consecutive empty pages
-
-        while page <= max_pages and empty_pages < max_empty_pages:
-            logging.info(f'Scraping page {page} for dork: {dork}')
-            
-            try:
-                new_results = self.search(dork, page)
-                
-                if not new_results:
-                    empty_pages += 1
-                    logging.info(f'No results found on page {page}, empty pages: {empty_pages}')
-                    if empty_pages >= max_empty_pages:
-                        logging.info('Reached maximum empty pages, stopping search')
-                        break
-                else:
-                    empty_pages = 0  # Reset counter when we find results
-                    results.update(new_results)
-                    logging.info(f'Found {len(new_results)} new profiles on page {page}. Total unique profiles: {len(results)}')
-                
-                # Adaptive delay based on response success
-                delay = random.uniform(4, 8)
-                if page % 5 == 0:  # Longer delay every 5 pages
-                    delay = random.uniform(10, 15)
-                if len(results) > 100:  # Even longer delay if we have many results
-                    delay *= 1.5
-                
-                logging.debug(f'Waiting {delay:.2f} seconds before next request')
-                time.sleep(delay)
-                
-                page += 1
-
-            except Exception as e:
-                logging.error(f'Error scraping page {page}: {str(e)}')
-                time.sleep(random.uniform(10, 20))  # Wait longer on errors
-                continue
-
-        logging.info(f'Finished scraping after {page-1} pages. Found {len(results)} unique profiles')
-        return results if results else set()  # Always return a set, even if empty
 
 def main():
     # Initialize the profile manager
@@ -600,11 +287,8 @@ def main():
         print("Failed to process profiles")
 
     # Load profiles from the data file
-    input_file = 'personal_profiles_data.json'
+    input_file = os.path.join(PROFILES_DIR, 'personal_profiles_data.json')
     manager.load_profiles(input_file)
-    
-    # Clean the URLs
-    manager.clean_profile_urls()
     
     # Save the cleaned profiles
     output_file = 'personal_profiles_data_cleaned.json'

@@ -6,6 +6,11 @@ from typing import List, Dict, Optional, Union
 from enum import Enum
 import time
 
+# Constants
+INSTRUCTIONS_DIR = "instructions"
+PERSONAL_INSTRUCTIONS_FILE = os.path.join(INSTRUCTIONS_DIR, "linkedin_profile_instructions.txt")
+COMPANY_INSTRUCTIONS_FILE = os.path.join(INSTRUCTIONS_DIR, "company_profile_instructions.txt")
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -131,8 +136,8 @@ class LinkedInAIAgent:
     def get_instruction_file(self) -> str:
         """Get the appropriate instruction file based on profile type."""
         if self.profile_type == ProfileType.PERSONAL:
-            return "linkedin_profile_instructions.txt"
-        return "company_profile_instructions.txt"
+            return PERSONAL_INSTRUCTIONS_FILE
+        return COMPANY_INSTRUCTIONS_FILE
 
     def process_results(self, results: List[str], output_file: str) -> None:
         """Process the search results and save them to a file."""

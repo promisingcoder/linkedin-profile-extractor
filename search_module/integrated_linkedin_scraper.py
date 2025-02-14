@@ -5,85 +5,12 @@ import logging
 import random
 import json
 import os
-import openai
+from ai_module.dork_generator import DorkGenerator
 
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
-
-class DorkGenerator:
-    def __init__(self, api_key=None):
-        # Set the API key for the openai module
-        openai.api_key = api_key or os.getenv('OPENAI_API_KEY')
-        
-    def generate_dorks(self, query, profile_type="both"):
-        """Generate Google dorks for finding LinkedIn profiles."""
-        
-        system_prompts = {
-            "company": "You are a search dork generator specialized in finding LinkedIn company profiles.",
-            "personal": "You are a search dork generator specialized in finding LinkedIn personal profiles.",
-            "both": "You are a search dork generator specialized in finding both LinkedIn personal and company profiles."
-        }
-        
-        prompt = f"""
-        Generate 5 simple but effective search queries to find LinkedIn profiles related to: {query}
-
-        Rules for the queries:
-        1. Use simple terms that would appear in profiles
-        2. Include 'site:linkedin.com' at the start
-        3. For companies, include 'company' in the query
-        4. For personal profiles, include relevant job titles
-        5. Keep operators simple (avoid complex AND/OR)
-        6. Use quotes only for exact phrases
-        7. Include location terms when relevant
-        
-        Return the response in this exact JSON format:
-        [
-            {{"dork": "site:linkedin.com medical spa owner", "explanation": "This query finds..."}}
-        ]
-        """
-
-        try:
-            completion = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": system_prompts[profile_type]},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7
-            )
-            
-            response_text = completion.choices[0].message['content'].strip()
-            logging.debug(f"Raw GPT response: {response_text}")
-            
-            try:
-                dorks = json.loads(response_text)
-            except json.JSONDecodeError:
-                logging.warning("Failed to parse JSON response, attempting manual parsing")
-                lines = response_text.split('\n')
-                dorks = []
-                current_dork = None
-                current_explanation = None
-                
-                for line in lines:
-                    line = line.strip()
-                    if line.startswith('site:linkedin.com'):
-                        if current_dork and current_explanation:
-                            dorks.append({"dork": current_dork, "explanation": current_explanation})
-                        current_dork = line
-                        current_explanation = None
-                    elif line and current_dork and not current_explanation:
-                        current_explanation = line
-                
-                if current_dork and current_explanation:
-                    dorks.append({"dork": current_dork, "explanation": current_explanation})
-            
-            return dorks
-
-        except Exception as e:
-            logging.error(f"Error generating dorks: {str(e)}")
-            return []
 
 class LinkedInProfileScraper:
     def __init__(self):

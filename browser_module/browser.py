@@ -1,12 +1,13 @@
 import undetected_chromedriver as uc  # Import the undetected_chromedriver module to evade detection
 from time import sleep  # Import sleep function to add delays
 import chromedriver_autoinstaller  # Import to ensure the correct chromedriver version is installed
-from click_element_by_selector import click_element_by_selector  # Import custom function to click elements
-from fill_input import fill_input  # Import custom function to fill input fields
-from load_cookies import load_cookies  # Import custom function to load browser cookies
-from save_cookies import save_cookies  # Import custom function to save browser cookies
-from get_attribute_value import get_attribute_value  # Import custom function to get attribute values
-from get_inner_text import get_inner_text  # Import custom function to get inner text of elements
+from .utils.click_element_by_selector import click_element_by_selector  # Import custom function to click elements
+from .utils.fill_input import fill_input  # Import custom function to fill input fields
+from .utils.load_cookies import load_cookies  # Import custom function to load browser cookies
+from .utils.save_cookies import save_cookies  # Import custom function to save browser cookies
+from .utils.get_attribute_value import get_attribute_value  # Import custom function to get attribute values
+from .utils.get_inner_text import get_inner_text  # Import custom function to get inner text of elements
+from .utils.find_element_by_xpath import find_element_by_xpath, find_elements_by_xpath  # Import custom function to find elements
 import os  # Import OS module for operating system functionality
 from selenium.webdriver.support.ui import WebDriverWait  # Import for explicit waits
 from selenium.webdriver.support import expected_conditions as EC  # Import expected conditions for waits
@@ -101,7 +102,9 @@ class Browser:
         load_cookies(self.headless_browser.driver, path)
 
     def save_cookies_to_file(self, output_file_path):
-        """Save cookies from the browser to a specified file."""
+        """Save cookies to a file in the specified directory."""
+        # Create the directory if it doesn't exist
+        os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
         # Use the custom function to save cookies
         save_cookies(self.headless_browser.driver, output_file_path)
 
@@ -117,7 +120,7 @@ class Browser:
 
     def get_inner_text_list(self, selector):
         """Get a list of inner texts from elements identified by an XPath selector."""
-        elements = self.headless_browser.driver.find_elements(By.XPATH, selector)
+        elements = find_elements_by_xpath(self.headless_browser.driver, selector)
         return [element.text for element in elements]
 
     def save_to_csv(self, filename):

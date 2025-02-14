@@ -10,6 +10,7 @@ google-chrome*
 
 # Python
 __pycache__/
+data/
 *.py[cod]
 *$py.class
 *.so
