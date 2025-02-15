@@ -107,7 +107,7 @@ linkedin_profile_extractor/
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/linkedin-profile-extractor.git
+   git clone https://github.com/promisingcoder/linkedin-profile-extractor.git
    cd linkedin-profile-extractor
    ```
 
