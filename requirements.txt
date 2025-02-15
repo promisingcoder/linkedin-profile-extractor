@@ -5,8 +5,9 @@ beautifulsoup4
 requests
 python-dotenv
 undetected-chromedriver
-selenium
+selenium>=4.0.0
 pydantic
 tenacity
 python-multipart
 xvfbwrapper
+chromedriver-autoinstaller

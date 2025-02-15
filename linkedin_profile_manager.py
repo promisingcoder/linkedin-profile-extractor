@@ -12,6 +12,130 @@ from ai_module.linkedin_ai_agent import LinkedInAIAgent, ProfileType
 from search_module.integrated_linkedin_scraper import LinkedInProfileScraper
 from search_module.searxng_search import SearxNGSearch
 from ai_module.dork_generator import DorkGenerator
+import sys
+
+def get_openai_api_key():
+    """Get OpenAI API key from environment variables, .env file, or user input."""
+    def is_valid_api_key(key):
+        """Test if the API key is valid by making a test API call."""
+        if not key or not isinstance(key, str):
+            return False
+        
+        # Check if it's not the placeholder key from .env
+        if 'your_openai_api_key_here' in key or 'your_' in key:
+            return False
+            
+        # Basic format check
+        if not key.startswith('sk-') or len(key) <= 20:
+            return False
+            
+        # Test the key with a minimal API call
+        try:
+            client = OpenAI(api_key=key)
+            # Make a minimal test request
+            client.models.list()
+            return True
+        except Exception as e:
+            logging.warning(f"API key validation failed: {str(e)}")
+            return False
+
+    def prompt_for_api_key():
+        """Prompt user for API key and validate it."""
+        print("\nOpenAI API key not found or invalid.")
+        while True:
+            try:
+                api_key = input("Please enter your OpenAI API key (or 'q' to quit): ").strip()
+                if api_key.lower() == 'q':
+                    raise KeyboardInterrupt("User chose to quit")
+                
+                if is_valid_api_key(api_key):
+                    return api_key
+                    
+                print("Invalid API key. Please ensure your key is correct and your account is active.")
+            except KeyboardInterrupt:
+                raise
+            except Exception as e:
+                logging.error(f"Error validating API key: {e}")
+                print("An error occurred while validating the API key. Please try again.")
+
+    try:
+        # Try getting key from environment
+        api_key = os.getenv('OPENAI_API_KEY')
+        
+        if not api_key:
+            try:
+                from dotenv import load_dotenv
+                load_dotenv()
+                api_key = os.getenv('OPENAI_API_KEY')
+            except ImportError:
+                logging.warning("python-dotenv not installed. Using environment variables only.")
+            except Exception as e:
+                logging.error(f"Error loading .env file: {e}")
+
+        # Validate the API key
+        if not is_valid_api_key(api_key):
+            api_key = prompt_for_api_key()
+
+        # Save to environment variable for current session
+        os.environ['OPENAI_API_KEY'] = api_key
+
+        # Ask to save to .env file
+        try:
+            save_to_env = input("Would you like to save the API key to .env file? (y/n): ").lower()
+            if save_to_env == 'y':
+                try:
+                    # Read existing .env file
+                    env_lines = []
+                    api_key_exists = False
+                    
+                    if os.path.exists('.env'):
+                        with open('.env', 'r') as f:
+                            env_lines = f.readlines()
+                            
+                    # Update or add the API key
+                    for i, line in enumerate(env_lines):
+                        if line.strip().startswith('OPENAI_API_KEY='):
+                            env_lines[i] = f'OPENAI_API_KEY={api_key}\n'
+                            api_key_exists = True
+                            break
+                    
+                    if not api_key_exists:
+                        env_lines.append(f'\nOPENAI_API_KEY={api_key}\n')
+                    
+                    # Write back to .env file
+                    with open('.env', 'w') as f:
+                        f.writelines(env_lines)
+                    print("API key saved to .env file.")
+                except Exception as e:
+                    logging.error(f"Error saving API key to .env file: {e}")
+                    print("Failed to save API key to .env file. Continuing with current session only.")
+        except KeyboardInterrupt:
+            print("\nSkipping .env file save. Continuing with current session only.")
+
+        return api_key
+
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user.")
+        sys.exit(0)
+    except Exception as e:
+        logging.error(f"Error getting API key: {e}")
+        print(f"An error occurred: {str(e)}")
+        sys.exit(1)
+
+def get_search_config():
+    """Get search configuration from environment variables or .env file."""
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        logging.warning("python-dotenv not installed. Using environment variables only.")
+    
+    # Get search method, default to searxng
+    search_method = os.getenv('SEARCH_METHOD', 'searxng').lower()
+    
+    return {
+        'method': search_method
+    }
 
 # Constants for directories
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -47,10 +171,24 @@ class ProfileType:
 
 class LinkedInProfileManager:
     def __init__(self, api_key=None):
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
+        self.api_key = api_key or get_openai_api_key()
+        if not self.api_key:
+            raise ValueError("OpenAI API key is required")
+        
+        # Get search configuration
+        self.search_config = get_search_config()
+        logging.info(f"Using search method: {self.search_config['method']}")
+        
+        # Initialize search module based on configuration
+        if self.search_config['method'] == 'searxng':
+            self.searx_search = SearxNGSearch()
+            logging.info(f"Using {len(self.searx_search.search_engines)} SearxNG instances for searching")
+        else:
+            logging.warning(f"Search method '{self.search_config['method']}' not implemented, falling back to SearxNG")
+            self.searx_search = SearxNGSearch()
+            
         self.scraper = LinkedInProfileScraper()
         self.ai_agent = LinkedInAIAgent(api_key=self.api_key)
-        self.searx_search = SearxNGSearch()
         self.browser = None
         
         # Initialize separate sets for different profile types
@@ -261,38 +399,45 @@ class LinkedInProfileManager:
             logging.error(f"Error saving profiles: {e}")
 
 def main():
-    # Initialize the profile manager
-    api_key = os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        api_key = input("Please enter your OpenAI API key: ")
-        os.environ['OPENAI_API_KEY'] = api_key
+    try:
+        # Get OpenAI API key
+        api_key = get_openai_api_key()
+        if not api_key:
+            print("Error: OpenAI API key is required to proceed.")
+            return
 
-    manager = LinkedInProfileManager(api_key=api_key)
+        manager = LinkedInProfileManager(api_key=api_key)
 
-    # Get user input
-    query = input("What kind of LinkedIn profiles are you looking for? ")
-    profile_type = input("Type of profiles to search for (company/personal/both): ").lower()
-    
-    if profile_type not in ["company", "personal", "both"]:
-        profile_type = "both"
+        # Get user input
+        query = input("What kind of LinkedIn profiles are you looking for? ")
+        profile_type = input("Type of profiles to search for (company/personal/both): ").lower()
+        
+        if profile_type not in ["company", "personal", "both"]:
+            profile_type = "both"
 
-    # Process profiles
-    if manager.process_profiles(query, profile_type):
-        print("\nProfile processing completed!")
-        if manager.personal_profiles:
-            print(f"Found {len(manager.personal_profiles)} personal profiles")
-        if manager.company_profiles:
-            print(f"Found {len(manager.company_profiles)} company profiles")
-    else:
-        print("Failed to process profiles")
+        # Process profiles
+        if manager.process_profiles(query, profile_type):
+            print("\nProfile processing completed!")
+            if manager.personal_profiles:
+                print(f"Found {len(manager.personal_profiles)} personal profiles")
+            if manager.company_profiles:
+                print(f"Found {len(manager.company_profiles)} company profiles")
+        else:
+            print("Failed to process profiles")
 
-    # Load profiles from the data file
-    input_file = os.path.join(PROFILES_DIR, 'personal_profiles_data.json')
-    manager.load_profiles(input_file)
-    
-    # Save the cleaned profiles
-    output_file = 'personal_profiles_data_cleaned.json'
-    manager.save_profiles(output_file)
+        # Load profiles from the data file
+        input_file = os.path.join(PROFILES_DIR, 'personal_profiles_data.json')
+        manager.load_profiles(input_file)
+        
+        # Save the cleaned profiles
+        output_file = 'personal_profiles_data_cleaned.json'
+        manager.save_profiles(output_file)
+
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user.")
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     main() 

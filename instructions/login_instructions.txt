@@ -1,0 +1,24 @@
+# LinkedIn Login Instructions
+# Navigate to LinkedIn homepage
+NAVIGATE https://www.linkedin.com/
+
+# Wait for sign in button and click it
+WAIT_FOR //a[@data-test-id='home-hero-sign-in-cta']
+CLICK_ELEMENT_BY_SELECTOR //a[@data-test-id='home-hero-sign-in-cta']
+
+# Wait for login form and fill credentials
+WAIT_FOR //input[@id='username']
+FILL_INPUT //input[@id='username'] ${LINKEDIN_EMAIL}
+
+WAIT_FOR //input[@id='password']
+FILL_INPUT //input[@id='password'] ${LINKEDIN_PASSWORD}
+
+# Submit login form
+WAIT_FOR //button[@type='submit' and contains(text(), 'Sign in')]
+CLICK_ELEMENT_BY_SELECTOR //button[@type='submit' and contains(text(), 'Sign in')]
+
+# Wait for successful login (wait for nav menu to load)
+WAIT_FOR //nav[contains(@class, 'global-nav')]
+
+# Save cookies after successful login
+SAVE_TO_FILE ${COOKIES_FILE} 

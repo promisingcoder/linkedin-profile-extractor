@@ -61,6 +61,20 @@ class Browser:
         self.instruction_pointer = 0  # Pointer to keep track of instruction index
         self.instructions = []  # List to store instructions
         self.loop_stack = []  # Stack to handle nested loops
+        
+        # Load environment variables
+        self.linkedin_email = os.getenv('LINKEDIN_EMAIL')
+        self.linkedin_password = os.getenv('LINKEDIN_PASSWORD')
+        
+        if not self.linkedin_email or not self.linkedin_password:
+            # Try loading from .env file if environment variables are not set
+            try:
+                from dotenv import load_dotenv
+                load_dotenv()
+                self.linkedin_email = os.getenv('LINKEDIN_EMAIL')
+                self.linkedin_password = os.getenv('LINKEDIN_PASSWORD')
+            except ImportError:
+                logging.warning("python-dotenv not installed. Using environment variables only.")
 
     def navigate(self, url):
         # Navigate to the specified URL
@@ -143,6 +157,82 @@ class Browser:
 
         # Clear variables after saving to prevent data overlap
         self.variables.clear()
+
+    def is_logged_in(self):
+        """Check if the user is logged into LinkedIn."""
+        try:
+            # Navigate to LinkedIn
+            self.headless_browser.driver.get("https://www.linkedin.com/")
+            time.sleep(3)  # Wait for page to load
+            
+            # Look for guest navigation elements
+            guest_elements = self.headless_browser.driver.find_elements(
+                By.XPATH,
+                "//div[contains(@class, 'nav__cta-container')]//a[contains(@data-tracking-control-name, 'guest_homepage')]"
+            )
+            
+            # If no guest elements are found, user is likely logged in
+            return len(guest_elements) == 0
+            
+        except Exception as e:
+            logging.error(f"Error checking login status: {e}")
+            return False
+
+    def ensure_logged_in(self, cookies_file):
+        """Ensure the browser is logged into LinkedIn."""
+        try:
+            # Create cookies directory if it doesn't exist
+            os.makedirs(os.path.dirname(cookies_file), exist_ok=True)
+            
+            # First try to load cookies if they exist
+            if os.path.exists(cookies_file):
+                self.load_cookies_from_file(cookies_file)
+                # Navigate to LinkedIn and check login status
+                self.headless_browser.driver.get("https://www.linkedin.com/")
+                time.sleep(3)  # Wait for page to load
+                
+                # Check if already logged in by looking for nav menu
+                try:
+                    nav_menu = WebDriverWait(self.headless_browser.driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, "//nav[contains(@class, 'global-nav')]"))
+                    )
+                    logging.info("Already logged in via cookies")
+                    return True
+                except TimeoutException:
+                    logging.info("Not logged in, proceeding with login process")
+            
+            # If we reach here, either cookies don't exist or didn't work
+            if not self.linkedin_email or not self.linkedin_password:
+                raise ValueError("LinkedIn credentials not found in environment variables or .env file")
+            
+            # Set variables for login instructions
+            self.variables['LINKEDIN_EMAIL'] = self.linkedin_email
+            self.variables['LINKEDIN_PASSWORD'] = self.linkedin_password
+            self.variables['COOKIES_FILE'] = cookies_file
+            
+            # Execute login instructions
+            login_instructions_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
+                                                 "instructions", "login_instructions.txt")
+            
+            if not os.path.exists(login_instructions_file):
+                raise FileNotFoundError(f"Login instructions file not found: {login_instructions_file}")
+            
+            self.execute_instructions(login_instructions_file)
+            
+            # Verify login was successful
+            if not self.is_logged_in():
+                raise Exception("Failed to log in to LinkedIn")
+            
+            # Save cookies after successful login
+            logging.info("Login successful, saving cookies")
+            self.save_cookies_to_file(cookies_file)
+            
+            logging.info("Successfully logged in to LinkedIn and saved cookies")
+            return True
+            
+        except Exception as e:
+            logging.error(f"Error ensuring login: {e}")
+            return False
 
     def execute_instructions(self, file_path):
         """Execute instructions from a text file."""
@@ -431,6 +521,10 @@ class Browser:
                 if direction == 'UP':
                     pixels = -pixels
                 self.headless_browser.driver.execute_script(f"window.scrollBy(0, {pixels});")
+            elif command == 'SAVE_TO_FILE':
+                # Save cookies to file
+                self.save_cookies_to_file(args.strip())
+                return True
             else:
                 logging.warning(f"Unknown command: {command}")
                 return None
