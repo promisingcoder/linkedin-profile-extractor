@@ -184,24 +184,32 @@ class Browser:
             # Create cookies directory if it doesn't exist
             os.makedirs(os.path.dirname(cookies_file), exist_ok=True)
             
-            # First try to load cookies if they exist
+            cookies_loaded = False
             if os.path.exists(cookies_file):
-                self.load_cookies_from_file(cookies_file)
-                # Navigate to LinkedIn and check login status
-                self.headless_browser.driver.get("https://www.linkedin.com/")
-                time.sleep(3)  # Wait for page to load
-                
-                # Check if already logged in by looking for nav menu
                 try:
-                    nav_menu = WebDriverWait(self.headless_browser.driver, 10).until(
-                        EC.presence_of_element_located((By.XPATH, "//nav[contains(@class, 'global-nav')]"))
-                    )
-                    logging.info("Already logged in via cookies")
-                    return True
-                except TimeoutException:
-                    logging.info("Not logged in, proceeding with login process")
-            
-            # If we reach here, either cookies don't exist or didn't work
+                    self.load_cookies_from_file(cookies_file)
+                    cookies_loaded = True
+                    logging.info("Loaded existing cookies")
+                except Exception as e:
+                    logging.warning(f"Failed to load cookies: {e}")
+            else:
+                logging.info("No existing cookies file found")
+
+            # Navigate to LinkedIn and check login status
+            self.headless_browser.driver.get("https://www.linkedin.com/")
+            time.sleep(3)  # Wait for page to load
+
+            # Check if already logged in
+            try:
+                nav_menu = WebDriverWait(self.headless_browser.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//nav[contains(@class, 'global-nav')]"))
+                )
+                logging.info("Already logged in with existing cookies")
+                return True
+            except TimeoutException:
+                logging.info("Not logged in, proceeding with login process")
+
+            # If we reach here, either cookies don't exist, failed to load, or are invalid
             if not self.linkedin_email or not self.linkedin_password:
                 raise ValueError("LinkedIn credentials not found in environment variables or .env file")
             
@@ -217,18 +225,30 @@ class Browser:
             if not os.path.exists(login_instructions_file):
                 raise FileNotFoundError(f"Login instructions file not found: {login_instructions_file}")
             
-            self.execute_instructions(login_instructions_file)
-            
-            # Verify login was successful
-            if not self.is_logged_in():
-                raise Exception("Failed to log in to LinkedIn")
-            
-            # Save cookies after successful login
-            logging.info("Login successful, saving cookies")
-            self.save_cookies_to_file(cookies_file)
-            
-            logging.info("Successfully logged in to LinkedIn and saved cookies")
-            return True
+            try:
+                self.execute_instructions(login_instructions_file)
+                
+                # Verify login was successful
+                if not self.is_logged_in():
+                    raise Exception("Failed to log in to LinkedIn")
+                
+                # Save new cookies after successful login
+                logging.info("Login successful, saving new cookies")
+                self.save_cookies_to_file(cookies_file)
+                
+                logging.info("Successfully logged in to LinkedIn and saved new cookies")
+                return True
+                
+            except Exception as e:
+                logging.error(f"Login process failed: {e}")
+                # If cookies were loaded but invalid, delete them
+                if cookies_loaded and os.path.exists(cookies_file):
+                    try:
+                        os.remove(cookies_file)
+                        logging.info("Removed invalid cookies file")
+                    except Exception as del_err:
+                        logging.warning(f"Failed to remove invalid cookies file: {del_err}")
+                return False
             
         except Exception as e:
             logging.error(f"Error ensuring login: {e}")
@@ -444,7 +464,10 @@ class Browser:
                 self.variables[var_name] = separator.join(texts)
             elif command == 'FILL_INPUT':
                 # Args format: "selector" value
-                selector, value = self.parse_args(args)
+                parts = self.parse_args_flexible(args)
+                if len(parts) != 2:
+                    raise ValueError(f"FILL_INPUT requires 2 arguments, got {len(parts)}")
+                selector, value = parts
                 self.fill_input(selector, value)
             elif command == 'SAVE_TO_CSV':
                 filename = args.strip()

@@ -196,17 +196,6 @@ class LinkedInProfileManager:
         self.company_profiles = set()
         
         self.profiles = []
-        
-    def initialize_browser(self):
-        """Initialize the browser and load cookies"""
-        try:
-            self.browser = Browser()
-            self.browser.load_cookies_from_file(COOKIES_FILE)
-            logging.info("Successfully initialized browser and loaded cookies")
-            return True
-        except Exception as e:
-            logging.error(f"Error initializing browser: {e}")
-            return False
 
     def process_profiles(self, query, profile_type="both"):
         """Main method to process LinkedIn profiles"""
@@ -275,7 +264,11 @@ class LinkedInProfileManager:
         try:
             # Initialize browser if not already initialized
             if not self.browser:
-                if not self.initialize_browser():
+                self.browser = Browser()
+                
+            # Ensure logged in with cookies
+            if not self.browser.ensure_logged_in(COOKIES_FILE):
+                logging.error("Failed to ensure login status")
                     return False
 
             timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -402,36 +395,36 @@ def main():
     try:
         # Get OpenAI API key
         api_key = get_openai_api_key()
-        if not api_key:
+    if not api_key:
             print("Error: OpenAI API key is required to proceed.")
             return
 
-        manager = LinkedInProfileManager(api_key=api_key)
+    manager = LinkedInProfileManager(api_key=api_key)
 
-        # Get user input
-        query = input("What kind of LinkedIn profiles are you looking for? ")
-        profile_type = input("Type of profiles to search for (company/personal/both): ").lower()
-        
-        if profile_type not in ["company", "personal", "both"]:
-            profile_type = "both"
+    # Get user input
+    query = input("What kind of LinkedIn profiles are you looking for? ")
+    profile_type = input("Type of profiles to search for (company/personal/both): ").lower()
+    
+    if profile_type not in ["company", "personal", "both"]:
+        profile_type = "both"
 
-        # Process profiles
-        if manager.process_profiles(query, profile_type):
-            print("\nProfile processing completed!")
-            if manager.personal_profiles:
-                print(f"Found {len(manager.personal_profiles)} personal profiles")
-            if manager.company_profiles:
-                print(f"Found {len(manager.company_profiles)} company profiles")
-        else:
-            print("Failed to process profiles")
+    # Process profiles
+    if manager.process_profiles(query, profile_type):
+        print("\nProfile processing completed!")
+        if manager.personal_profiles:
+            print(f"Found {len(manager.personal_profiles)} personal profiles")
+        if manager.company_profiles:
+            print(f"Found {len(manager.company_profiles)} company profiles")
+    else:
+        print("Failed to process profiles")
 
-        # Load profiles from the data file
+    # Load profiles from the data file
         input_file = os.path.join(PROFILES_DIR, 'personal_profiles_data.json')
-        manager.load_profiles(input_file)
-        
-        # Save the cleaned profiles
-        output_file = 'personal_profiles_data_cleaned.json'
-        manager.save_profiles(output_file)
+    manager.load_profiles(input_file)
+    
+    # Save the cleaned profiles
+    output_file = 'personal_profiles_data_cleaned.json'
+    manager.save_profiles(output_file)
 
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")
