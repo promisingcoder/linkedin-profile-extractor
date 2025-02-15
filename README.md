@@ -8,79 +8,116 @@ The project leverages `undetected-chromedriver` to bypass LinkedIn's bot detecti
 
 ## Features
 
-- **Automated Profile Scraping**: Efficiently scrape LinkedIn profiles while respecting rate limits
-- **Intelligent Search**: AI-powered search query generation using OpenAI's API
-- **Multi-Instance Search**: Utilizes multiple SearxNG instances for robust searching
+- **Automated Profile Scraping**: 
+  - Efficiently scrape LinkedIn profiles while respecting rate limits
+  - Automatic retry mechanisms for failed requests
+  - Smart delay management between requests
+
+- **Intelligent Search**: 
+  - AI-powered search query generation using OpenAI's API
+  - Support for both personal and company profiles
+  - Advanced dork generation for precise targeting
+
+- **Multi-Instance Search**: 
+  - Utilizes multiple SearxNG instances for robust searching
+  - Fallback mechanisms when search instances fail
+  - Automatic rotation between search engines
+
 - **Smart Authentication**: 
   - Secure handling of LinkedIn credentials
-  - Automatic cookie management
-  - Session persistence
+  - Automatic cookie management with save/load functionality
+  - Persistent session handling
+  - Automatic re-login when cookies expire
+
 - **Robust API Key Management**:
   - Secure OpenAI API key handling
+  - Multiple key storage options:
+    - Environment variables
+    - .env file
+    - Interactive key input
   - Automatic key validation
-  - Support for environment variables and .env file
-  - Interactive key input with validation
-- **Profile Categorization**: Separate handling of personal and company profiles
-- **Data Deduplication**: Prevents duplicate profile processing
-- **Error Recovery**: Saves progress and handles interruptions gracefully
+  - Secure key storage with user consent
+
+- **Profile Categorization**: 
+  - Separate handling of personal and company profiles
+  - Intelligent profile type detection
+  - Category-specific data extraction
+
+- **Data Management**:
+  - Automatic deduplication of profiles
+  - JSON-based data storage
+  - Structured data organization
+  - Backup of unprocessed profiles
+
+- **Error Recovery**: 
+  - Comprehensive error handling
+  - Automatic retry mechanisms
+  - Session recovery
+  - Progress saving during interruptions
 
 ## Project Structure
 
 ```
 linkedin_profile_extractor/
 │
-├── browser_module/            # Module containing browser-related functionality
-│   ├── __init__.py           # Browser module initialization
-│   ├── browser.py            # Main browser interaction logic
+├── browser_module/            # Browser automation
+│   ├── __init__.py
+│   ├── browser.py            # Main browser control
 │   └── utils/                # Browser utilities
 │       ├── __init__.py
 │       ├── click_element_by_selector.py
 │       ├── fill_input.py
 │       ├── find_element_by_xpath.py
 │       ├── get_attribute_value.py
-│       └── get_inner_text.py
+│       ├── get_inner_text.py
+│       ├── load_cookies.py
+│       └── save_cookies.py
 │
-├── search_module/            # Module for search functionality
+├── search_module/            # Search functionality
 │   ├── __init__.py
 │   ├── integrated_linkedin_scraper.py
 │   └── searxng_search.py
 │
-├── ai_module/               # AI-powered functionality
+├── ai_module/               # AI integration
 │   ├── __init__.py
 │   ├── linkedin_ai_agent.py
 │   ├── dork_generator.py
 │   └── instruction_generator.py
 │
-├── data/                    # Data storage directory
-│   ├── profiles/           # Scraped profile data
-│   ├── queries/            # Generated search queries
+├── data/                    # Data storage
+│   ├── profiles/           # Profile data
+│   ├── queries/            # Search queries
 │   ├── logs/              # Application logs
 │   └── cookies/           # Browser cookies
 │
-├── instructions/           # Directory containing scraping instructions
+├── instructions/           # Scraping instructions
 │   ├── linkedin_profile_instructions.txt
 │   └── company_profile_instructions.txt
 │
-├── linkedin_profile_manager.py  # Main script for managing profile extraction
-├── requirements.txt            # Project dependencies
-└── .env                       # Environment configuration file
+├── tests/                  # Test suite
+│   ├── __init__.py
+│   └── test_login.py      # Login testing
+│
+├── linkedin_profile_manager.py  # Main application
+├── requirements.txt            # Dependencies
+└── .env                       # Configuration
 ```
 
 ## Installation
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/promisingcoder/linkedin-profile-extractor.git
+   git clone https://github.com/yourusername/linkedin-profile-extractor.git
    cd linkedin-profile-extractor
    ```
 
-2. **Install the required dependencies:**
+2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Set up the environment:**
-   Create a `.env` file in the root directory with the following content:
+3. **Configure environment:**
+   Create a `.env` file:
    ```env
    # LinkedIn Credentials
    LINKEDIN_EMAIL=your.email@example.com
@@ -90,52 +127,75 @@ linkedin_profile_extractor/
    OPENAI_API_KEY=your_openai_api_key
 
    # Search Configuration
-   SEARCH_METHOD=searxng  # Options: searxng, google, bing, duckduckgo
+   SEARCH_METHOD=searxng
    ```
 
 4. **API Key Setup:**
-   The script supports multiple ways to provide your OpenAI API key:
+   The application supports multiple ways to provide your OpenAI API key:
    - Environment variables
    - .env file
-   - Interactive prompt
+   - Interactive prompt with validation
    
-   The key will be validated before use to ensure it's active and correct.
+   The key will be validated before use and stored securely.
 
-5. **Usage:**
-   Run the main script:
+## Usage
+
+1. **Run the main script:**
    ```bash
    python linkedin_profile_manager.py
    ```
-   The script will:
-   - Validate your OpenAI API key
-   - Ask for your search query (e.g., "Med Spa Owners in California")
-   - Ask for profile type (personal/company/both)
-   - Generate appropriate search queries using AI
-   - Search for and collect LinkedIn profile URLs
-   - Scrape the profiles and save the data
 
-6. **Data Storage:**
-   - Scraped profiles are saved in the `data/profiles` directory
-   - Logs are stored in `data/logs`
-   - Cookies are managed in `data/cookies`
-   - Search queries are saved in `data/queries`
+2. **First Run Setup:**
+   - Validates OpenAI API key
+   - Handles LinkedIn authentication
+   - Creates necessary directories
+   - Sets up logging
+
+3. **Profile Search:**
+   - Enter your search query (e.g., "Med Spa Owners in California")
+   - Choose profile type (personal/company/both)
+   - Wait for AI-generated search queries
+   - Monitor progress in logs
+
+4. **Data Storage:**
+   - Profiles: `data/profiles/`
+   - Logs: `data/logs/`
+   - Cookies: `data/cookies/`
+   - Search queries: `data/queries/`
 
 ## Error Handling
 
-The script includes robust error handling for:
-- Invalid or expired API keys
-- Network connectivity issues
+The application includes comprehensive error handling for:
+- Network issues
+- Authentication failures
 - Rate limiting
-- Invalid credentials
-- File system operations
-- Keyboard interrupts
+- API key validation
+- File operations
+- User interruptions
+- Session management
 
-## Security Notes
+## Security
 
-- API keys and credentials are never hardcoded
-- Sensitive data is stored in .env file (not committed to version control)
-- Cookies are stored securely for session management
-- All data is stored locally on your machine
+- Secure credential management
+- No hardcoded secrets
+- Environment-based configuration
+- Secure cookie handling
+- Local data storage
+- Session isolation
+
+## Testing
+
+Run the test suite:
+```bash
+python -m pytest tests/
+```
+
+Key test areas:
+- Login functionality
+- Cookie management
+- API key validation
+- Profile scraping
+- Search functionality
 
 ## License
 
@@ -143,4 +203,9 @@ This project is licensed under the MIT License.
 
 ## Contributing
 
-Contributions are welcome! If you find any bugs or have suggestions for improvements, please create an issue or submit a pull request.
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
