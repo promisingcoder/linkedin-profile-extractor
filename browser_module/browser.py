@@ -718,16 +718,49 @@ if __name__ == "__main__":
         """Main function to initiate the instruction execution."""
         parser = argparse.ArgumentParser(description='Browser automation script.')
         parser.add_argument('-i', '--instructions', required=True, help='Path to the instructions file.')
+        parser.add_argument('--urls', help='Path to the file containing URLs to process (used by ${URLS_FILE}).')
+        parser.add_argument('--output', help='Path to output JSONL file (used by ${OUTPUT_FILE}).')
+        parser.add_argument('--csv-output', dest='csv_output', help='Path to CSV output (used by ${CSV_OUTPUT_FILE}).')
+        parser.add_argument('--cookies', help='Path to cookies JSON file to load/save.')
+        parser.add_argument('--login', action='store_true', help='Ensure LinkedIn login and save cookies to --cookies path.')
         args = parser.parse_args()
 
         instructions_file = args.instructions
 
+        # Defaults for outputs and cookies
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        default_profiles_dir = os.path.join(base_dir, 'data', 'profiles')
+        default_cookies_dir = os.path.join(base_dir, 'data', 'cookies')
+        os.makedirs(default_profiles_dir, exist_ok=True)
+        os.makedirs(default_cookies_dir, exist_ok=True)
+
+        output_path = args.output or os.path.join(default_profiles_dir, 'personal_profiles_data.json')
+        csv_output_path = args.csv_output or os.path.join(default_profiles_dir, 'company_profiles.csv')
+        cookies_path = args.cookies or os.path.join(default_cookies_dir, 'cookies.txt')
+
         browser = Browser()  # Create a new Browser instance
-        #browser.save_cookies_to_file("cookies.txt")
-        browser.load_cookies_from_file("cookies.txt")  # Load cookies for authentication (if needed)
-        browser.execute_instructions(instructions_file)  # Execute instructions from the specified file
-        print("Scraped Data:", browser.variables)
-        browser.close()  # Close the browser session
+        try:
+            # Provide variables for instruction files if passed
+            if args.urls:
+                browser.variables['URLS_FILE'] = args.urls
+            browser.variables['OUTPUT_FILE'] = output_path
+            browser.variables['CSV_OUTPUT_FILE'] = csv_output_path
+
+            # Handle cookies and optional login flow
+            if args.login:
+                browser.ensure_logged_in(cookies_path)
+            else:
+                if os.path.exists(cookies_path):
+                    try:
+                        browser.load_cookies_from_file(cookies_path)
+                    except Exception as e:
+                        logging.warning(f"Could not load cookies from {cookies_path}: {e}")
+
+            # Execute instructions from the specified file
+            browser.execute_instructions(instructions_file)
+            print("Scraped Data:", browser.variables)
+        finally:
+            browser.close()  # Close the browser session
 
     # Execute the main function when the script is run
     main()
