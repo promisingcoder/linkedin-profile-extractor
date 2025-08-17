@@ -1,4 +1,4 @@
-import openai
+from openai import OpenAI
 import json
 import os
 
@@ -6,7 +6,7 @@ class DorkGenerator:
     def __init__(self, api_key=None):
         # Use the provided API key or fallback to the environment variable.
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
-        openai.api_key = self.api_key
+        self.client = OpenAI(api_key=self.api_key)
 
     def generate_dorks(self, query, profile_type="both"):
         """Generate Google dorks for finding LinkedIn profiles."""
@@ -47,9 +47,9 @@ Return only a valid JSON array (without any additional text or markdown) in this
 """
 
         try:
-            # Call the OpenAI Chat Completion API.
-            response = openai.ChatCompletion.create(
-                model="gpt-4",  # You can change this to "gpt-3.5-turbo" if needed.
+            # Call the OpenAI Chat Completions API (v1 client).
+            completion = self.client.chat.completions.create(
+                model="gpt-4-turbo-preview",
                 messages=[
                     {"role": "system", "content": system_prompts[profile_type]},
                     {"role": "user", "content": prompt}
@@ -57,8 +57,7 @@ Return only a valid JSON array (without any additional text or markdown) in this
                 temperature=0.7
             )
 
-            # Get the response text.
-            response_text = response.choices[0].message.content.strip()
+            response_text = completion.choices[0].message.content.strip()
             print("Raw API response:")
             print(response_text)
 

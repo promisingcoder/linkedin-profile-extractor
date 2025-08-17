@@ -1,5 +1,5 @@
-# Begin loop over company URLs in company_links.txt
-LOOP company_url IN company_links.txt
+# Begin loop over company URLs in the provided file
+LOOP company_url IN ${URLS_FILE}
 
   # Navigate to the company URL
   NAVIGATE ${company_url}
@@ -58,7 +58,7 @@ LOOP company_url IN company_links.txt
   GET_INNER_TEXT_LIST "//div[contains(@class, 'org-about-module__specialties')]//span" specialties |
 
   # Save all scraped data to CSV
-  SAVE_TO_CSV company_profiles.csv
+  SAVE_TO_CSV ${CSV_OUTPUT_FILE}
 
 # End of loop
 ENDLOOP

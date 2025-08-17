@@ -1,7 +1,7 @@
 # LinkedIn Personal Profile Scraping Instructions
 
-# Loop through each profile URL in the file
-FOR_EACH_URL IN current_batch_profiles.txt
+# Loop through each profile URL in the provided file
+FOR_EACH_URL IN ${URLS_FILE}
     # 1. Visit the profile
     VISIT_URL
 
@@ -21,7 +21,7 @@ FOR_EACH_URL IN current_batch_profiles.txt
     EXTRACT {"linkedin_url": "//div[@role='dialog']//a[contains(@href, 'linkedin.com/in/')]/@href", "websites": "//div[@role='dialog']//section[.//h3[text()='Website']]//a/@href", "phone": "//div[@role='dialog']//section[.//h3[text()='Phone']]//span", "email": "//div[@role='dialog']//section[.//h3[text()='Email']]//a", "birthday": "//div[@role='dialog']//section[.//h3[text()='Birthday']]//span"}
 
     # 6. Save extracted data (this will save both basic profile and contact info)
-    SAVE_TO personal_profiles_data.json
+    SAVE_TO ${OUTPUT_FILE}
 
     # 7. Wait between profiles to avoid rate limiting
     WAIT_RANDOM 10-15

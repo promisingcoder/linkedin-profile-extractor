@@ -43,6 +43,9 @@ class HeadlessBrowser:
         options.add_argument('--no-sandbox')  # Bypass OS security model
         options.add_argument('--disable-dev-shm-usage')  # Overcome limited resource problems
         options.add_argument('--disable-blink-features=AutomationControlled')  # Disable automation controls
+        options.add_argument('--headless=new')  # Run Chrome in headless mode
+        options.add_argument('--disable-gpu')
+        options.add_argument('--window-size=1920,1080')
         return options
 
     def quit(self):

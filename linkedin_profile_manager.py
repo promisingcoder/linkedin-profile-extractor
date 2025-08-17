@@ -165,9 +165,7 @@ logging.basicConfig(
     ]
 )
 
-class ProfileType:
-    PERSONAL = "personal"
-    COMPANY = "company"
+# Use ProfileType from ai_module.linkedin_ai_agent
 
 class LinkedInProfileManager:
     def __init__(self, api_key=None):
@@ -281,6 +279,10 @@ class LinkedInProfileManager:
                     for profile in self.personal_profiles:
                         f.write(f"{profile}\n")
                 
+                # Provide variables for instruction file
+                self.browser.variables['URLS_FILE'] = current_batch_file
+                self.browser.variables['OUTPUT_FILE'] = os.path.join(PROFILES_DIR, 'personal_profiles_data.json')
+
                 # Execute personal profile instructions
                 self.browser.execute_instructions(PERSONAL_INSTRUCTIONS_FILE)
                 
@@ -291,6 +293,10 @@ class LinkedInProfileManager:
                     for profile in self.company_profiles:
                         f.write(f"{profile}\n")
                 
+                # Provide variables for instruction file
+                self.browser.variables['URLS_FILE'] = current_batch_file
+                self.browser.variables['CSV_OUTPUT_FILE'] = os.path.join(PROFILES_DIR, 'company_profiles.csv')
+
                 # Execute company profile instructions
                 self.browser.execute_instructions(COMPANY_INSTRUCTIONS_FILE)
 
